@@ -4,6 +4,11 @@
 /source/STM32firmware/PlusCart/UnoCart
 /source/STM32firmware/PlusCart/UnoCart Zero
 /source/STM32firmware/PlusCart/.settings/language.settings.xml
+/source/Atari2600ROM/bin/
+/source/Atari2600ROM/include/
 /source/Atari2600ROM/PlusCart.lst
 /source/Picofirmware/jeff-pico
 /source/Picofirmware/PlusCart/.pio
+/source/Picofirmware/jeff-pico
+/source/Picofirmware/PlusCart/.pio
+/source/Picofirmware/PlusCart/data
