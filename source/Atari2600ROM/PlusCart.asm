@@ -9,9 +9,10 @@
 VERSION     = $0000
 BASE_ADR    = $1000
 
-NTSC        = 1
-PAL60       = 0
-PAL50       = 0
+; This enables Makefile definition to build different firmware files
+;NTSC        = 1
+;PAL60       = 0
+;PAL50       = 0
 
 ILLEGAL     = 1
 DEBUG       = 0
@@ -43,7 +44,8 @@ COLOR       = 3         ; color scheme
 
 PLUSACTIVE = $D8      ; <-- $D8 for running on hardware, anything else for Stella
 
-SPINNER = 0             ; 0 = spining PlusCart logo, 1 = flashing UnoCart SD logo
+; This enables Makefile definition to build different firmware files
+;SPINNER = 0             ; 0 = spinning PlusCart logo, 1 = flashing UnoCart SD logo
 
     ; MODIFY "MAGNIFY" TO CHANGE SIZE OF LOGO!!
     ; Adjusts the vertical height of the logo (# lines per pixel)
