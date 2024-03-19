@@ -347,8 +347,6 @@ uint32_t flash_file_request(uint8_t *ext_buffer, char *path, uint32_t start, uin
    f.seek(start, SeekSet);
    uint32_t bytes = f.readBytes((char *)ext_buffer, length);
 
-   //dbgSerial.printf("filename: %s, bytes read: %d\n\r", filename, bytes);
-
    f.close();
 
    return bytes;

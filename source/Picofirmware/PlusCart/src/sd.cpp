@@ -7,11 +7,10 @@
 #if USE_WIFI
    #include "esp8266.h"
 #endif
-#if USE_SD_CARD
-   #include "sd.h"
-#endif
 
 #if USE_SD_CARD
+
+#include "sd.h"
 
 size_t sd_get_num() {
     return 1;

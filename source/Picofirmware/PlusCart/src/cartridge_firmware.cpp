@@ -4,8 +4,6 @@
 #include "cartridge_firmware.h"
 #include "hardware/sync.h"
 
-//#include "defender_rom.h"
-
 #if MENU_TYPE == UNOCART
 #include "firmware_uno_pal_rom.h"
 #include "firmware_uno_pal60_rom.h"
@@ -37,15 +35,9 @@
 
 const uint16_t DATAMODE_OUT = 0x5555;
 
-//FIXME
-//static char menu_header[CHARS_PER_LINE]__attribute__((section(".ccmram#")));
-//static char pendingStatusMessage[STATUS_MESSAGE_LENGTH]__attribute__((section(".ccmram#")));
-//static unsigned char menu_status[STATUS_MAX]__attribute__((section(".ccmram#")));
 static char menu_header[CHARS_PER_LINE];
 static char pendingStatusMessage[STATUS_MESSAGE_LENGTH];
 static unsigned char menu_status[STATUS_MAX];
-//FIXME
-//static unsigned const char *firmware_rom = firmware_ntsc_rom;
 static unsigned const char *firmware_rom = firmware_pal_rom;
 
 inline void add_zeroSprites();
@@ -851,7 +843,5 @@ int __time_critical_func(emulate_firmware_cartridge)() {
 
 bool reboot_into_cartridge() {
 	set_menu_status_byte(STATUS_StatusByteReboot, 1);
-
-   //dbgSerial.printf("inside reboot_into_cartridge()\n\r");
 	return emulate_firmware_cartridge() == CART_CMD_START_CART;
 }

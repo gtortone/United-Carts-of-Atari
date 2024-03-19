@@ -31,12 +31,6 @@
 #include <Arduino.h>
 #include "main.h"
 
-// debug
-#if DBG_SERIAL
-   #include <SoftwareSerial.h>
-   SoftwareSerial dbgSerial(28, 29); // RX, TX
-#endif
-
 #include "global.h"
 
 #include <stdlib.h>
@@ -45,8 +39,14 @@
 #include <string.h>
 
 #include "font.h"
+
+#if DBG_SERIAL
+   SoftwareSerial dbgSerial(DBG_SERIAL_RX, DBG_SERIAL_TX); // RX, TX
+#endif
+
 #if USE_WIFI
    #include "esp8266.h"
+   #include "esp8266_AT_WiFiManager.h"
 #endif
 #if USE_SD_CARD
    #include "SDFS.h"
@@ -172,10 +172,6 @@ const uint8_t numMenuItemsPerPage[] = {
 };
 
 /* Private variables ---------------------------------------------------------*/
-#if USE_WIFI
-UART_HandleTypeDef huart1;
-#endif
-
 int num_menu_entries = 0;
 char http_request_header[512];
 
@@ -198,9 +194,6 @@ MENU_ENTRY menu_entries[NUM_MENU_ITEMS];
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-#if USE_WIFI
-   static void MX_USART1_UART_Init(void);
-#endif
 enum e_status_message __in_flash("buildMenuFromPath") buildMenuFromPath( MENU_ENTRY * );
 void append_entry_to_path(MENU_ENTRY *);
 
@@ -367,6 +360,12 @@ MENU_ENTRY* generateSystemInfo(MENU_ENTRY *dst) {
 	sprintf(input_field, "WiFi Firmware      %s", esp8266_at_version);
 	make_menu_entry(&dst, input_field, Leave_Menu);
 #endif
+
+   sprintf(input_field, "Heap Size          %d KiB", rp2040.getTotalHeap()/1024);
+   make_menu_entry(&dst, input_field, Leave_Menu);
+
+   sprintf(input_field, "Heap Free          %d KiB", rp2040.getFreeHeap()/1024);
+   make_menu_entry(&dst, input_field, Leave_Menu);
 
    FSInfo64 fsinfo;
    LittleFS.info64(fsinfo);
@@ -543,8 +542,16 @@ enum e_status_message buildMenuFromPath( MENU_ENTRY *d )  {
 					        }
 					        curPath[i] = 0;
 
-					    	if(esp8266_wifi_connect( &curPath[SIZEOF_WIFI_SELECT_BASE_PATH  ],
-					    			&curPath[SIZEOF_WIFI_SELECT_BASE_PATH + 33])){
+                     // MENU_TEXT_SETUP
+                     strtok(curPath, "/");
+                     // MENU_TEXT_WIFI_SETUP
+                     strtok(NULL, "/");
+                     // MENU_TEXT_WIFI_SELECT
+                     strtok(NULL, "/");
+
+					    	if(esp8266_wifi_connect(strtok(NULL, "/"), strtok(NULL, "/"))) {     // ssid, password
+//                     if(esp8266_wifi_connect( &curPath[SIZEOF_WIFI_SELECT_BASE_PATH],
+//      &curPath[SIZEOF_WIFI_SELECT_BASE_PATH + 33])) {
 					        	menuStatusMessage = wifi_connected;
 					    	}else{
 					        	menuStatusMessage = wifi_not_connected;
@@ -582,7 +589,8 @@ enum e_status_message buildMenuFromPath( MENU_ENTRY *d )  {
 					*curPath = 0;
 				}
 				else if (strstr(mts, MENU_TEXT_ESP8266_UPDATE) == mts) {
-					esp8266_update();
+               //FIXME
+					//esp8266_update();
 					truncate_curPath();
 					menuStatusMessage = buildMenuFromPath(d);
 				}
@@ -725,7 +733,8 @@ enum e_status_message buildMenuFromPath( MENU_ENTRY *d )  {
 		}
 
 		else if (strstr(mts, MENU_TEXT_OFFLINE_ROM_UPDATE) == mts) {
-#if USE_WIFI
+//FIXME
+#if USE_WIFIxxx
 			if( flash_download("&r=1", d->filesize , 0 , false ) != DOWNLOAD_AREA_START_ADDRESS)
 				menuStatusMessage = download_failed;
 			else {
@@ -766,7 +775,8 @@ enum e_status_message buildMenuFromPath( MENU_ENTRY *d )  {
 
 		if (strstr(curPath, MENU_TEXT_FIRMWARE_UPDATE) == curPath) {
 			uint32_t bytes_to_read = d->filesize - 0x4000;
-#if USE_WIFI
+//FIXME
+#if USE_WIFIxxx
 			strcpy(curPath, "&u=1");
 			uint32_t bytes_to_ram = d->filesize > FIRMWARE_MAX_RAM ? FIRMWARE_MAX_RAM : d->filesize;
 			uint32_t bytes_read = esp8266_PlusStore_API_file_request( buffer, curPath, 0, 0x4000 );
@@ -970,6 +980,7 @@ CART_TYPE identify_cartridge( MENU_ENTRY *d )
 	}
 
 	if(d->type == Cart_File ){
+
 #if USE_WIFI
 		bytes_read = esp8266_PlusStore_API_file_request( buffer, curPath, 0, bytes_to_read );
 #endif
@@ -989,6 +1000,7 @@ CART_TYPE identify_cartridge( MENU_ENTRY *d )
 	if(d->filesize >  (BUFFER_SIZE * 1024)) {
 		cart_type.uses_ccmram = true;
 		if(d->type == Cart_File) {
+
 #if USE_WIFI
 			bytes_read_tail = (uint8_t)esp8266_PlusStore_API_file_request( tail, curPath, (d->filesize - 16), 16 );
 #endif
@@ -1157,7 +1169,8 @@ void emulate_cartridge(CART_TYPE cart_type, MENU_ENTRY *d)
 {
 	int offset = 0;
 
-#if USE_WIFI
+//FIXME
+#if USE_WIFIxxx
 	if (cart_type.withPlusFunctions == true ){
  		// Read path and hostname in ROM File from where NMI points to till '\0' and
 		// copy to http_request_header
@@ -1306,6 +1319,36 @@ void check_autostart(bool check_PlusROM){
 }
 
 void system_secondary_init(void){
+
+   static bool init = false;
+
+   if(!init) {
+
+#if DBG_SERIAL
+     dbgSerial.begin(115200);
+#endif
+
+     Serial.begin(115200);
+
+#if USE_WIFI
+     espSerial.setFIFOSize(WIFIESPAT_CLIENT_RX_BUFFER_SIZE);
+     espSerial.begin(115200, SERIAL_8N1);
+     WiFi.init(espSerial);
+#endif
+
+     LittleFSConfig cfg;
+     cfg.setAutoFormat(false);
+     LittleFS.setConfig(cfg);
+     LittleFS.begin();
+
+
+#if DBG_SERIAL
+     dbg("start\n\r");
+#endif
+
+      init = true;
+   }
+
 	check_autostart(false);
 
 	//	check user_settings properties that haven't been in user_setting since v1
@@ -1327,7 +1370,6 @@ void system_secondary_init(void){
 #endif
 
 #if USE_WIFI
-	MX_USART1_UART_Init();
 	esp8266_init();
 	read_esp8266_at_version();
 	check_autostart(true);
@@ -1349,11 +1391,13 @@ void append_entry_to_path(MENU_ENTRY *d){
 
 void setup() {
 
-  //FIXME
-  set_sys_clock_khz(240000, true);     // works
+  set_sys_clock_khz(250000, true);
 
   gpio_init_mask((uint)(ADDR_GPIO_MASK | DATA_GPIO_MASK | A12_GPIO_MASK));
 
+  // there are some issue at startup due to time required to setup pins
+  // if firmware starts too late 2600 bus will hang...
+  /*
   for(int pin=0; pin<ADDRWIDTH; pin++) {
      gpio_set_slew_rate(PINROMADDR + pin, GPIO_SLEW_RATE_FAST);
      gpio_set_pulls(PINROMADDR + pin, false, true);
@@ -1366,21 +1410,9 @@ void setup() {
 
   gpio_set_slew_rate(PINENABLE, GPIO_SLEW_RATE_FAST);
   gpio_set_pulls(PINENABLE, false, true);
-
-#if DBG_SERIAL
-  dbgSerial.begin(115200);
-#endif
-
-  Serial.begin(115200);
-
-  LittleFSConfig cfg;
-  cfg.setAutoFormat(false);
-  LittleFS.setConfig(cfg);
-  LittleFS.begin();
+  */
 
   EEPROM.begin(512);
-
-  dbg("start");
 }
 
 void loop() 
@@ -1398,6 +1430,7 @@ void loop()
 	   int ret = emulate_firmware_cartridge();
 
 		if (ret == CART_CMD_ROOT_DIR) {
+
 			system_secondary_init();
 
 			d->type = Root_Menu;
@@ -1546,7 +1579,7 @@ void loop()
 	#else
 		bool is_connected = false;
 	#endif
-		createMenuForAtari(menu_entries, act_page, num_menu_entries, is_connected, plus_store_status );
+		createMenuForAtari(menu_entries, act_page, num_menu_entries, is_connected, plus_store_status);
       sleep_ms(200);
   }   // end while loop
 }

@@ -46,7 +46,8 @@ enum Transmission_State{
 
 #endif
 
-#if USE_WIFI
+//FIXME
+#if USE_WIFIxxx
 #define process_transmission() \
         switch(huart_state){ \
           case Send_Start: { \

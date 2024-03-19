@@ -7,7 +7,6 @@
 
 #include "cartridge_io.h"
 
-
 #define CART_CMD_HOTSPOT	      0x1fe6
 #define CART_STATUS_BYTES_START	  0x1fe7	                    // start status bytes area
 #define CART_STATUS_BYTES_END	  CART_STATUS_BYTES_START + 6	// 7 bytes of status

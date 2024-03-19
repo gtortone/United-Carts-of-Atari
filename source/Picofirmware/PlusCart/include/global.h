@@ -4,19 +4,29 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#if DBG_SERIAL
+// debug
+#if DBG_SERIAL || USE_WIFI
    #include <SoftwareSerial.h>
-   extern SoftwareSerial dbgSerial;
+#endif
+
+#if DBG_SERIAL
+   extern SoftwareSerial dbgSerial; // RX, TX  (definition im main.cpp)
+   #define DBG_SERIAL_RX   23
+   #define DBG_SERIAL_TX   24
    #define dbg dbgSerial.printf
-#else
-   #define dbg Serial.printf
+#endif
+
+#if USE_WIFI
+   #define espSerial Serial1
+   #define ESP_SERIAL_RX   1
+   #define ESP_SERIAL_TX   0
 #endif
 
 #define UNOCART      1
 #define PLUSCART     2
 #define MENU_TYPE    PLUSCART
 
-//#define VERSION /* VERSION moved to "Project" -> "Properties" -> "C/C++ Build" -> "Build Variables" */
+#define VERSION                   "2.3.17"
 #define PLUSSTORE_API_HOST        "pluscart.firmaplus.de"
 
 #define CHARS_PER_LINE					32
@@ -88,11 +98,7 @@
 
 #define SIZEOF_WIFI_SELECT_BASE_PATH        sizeof(MENU_TEXT_SETUP) + sizeof(MENU_TEXT_WIFI_SETUP) + sizeof(MENU_TEXT_WIFI_SELECT)
 
-#if USE_WIFI
-extern UART_HandleTypeDef huart1;
-#endif
 extern char http_request_header[];
-
 extern uint8_t buffer[];
 extern unsigned int cart_size_bytes;
 

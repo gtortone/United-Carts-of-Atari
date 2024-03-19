@@ -56,15 +56,6 @@ void __time_critical_func(emulate_standard_cartridge)(int header_length, bool wi
 	if (!reboot_into_cartridge()) return;
    uint32_t irqstatus = save_and_disable_interrupts();
 
-#if 0
-   dbgSerial.printf("start emulate_standard_cartridge()\n\r");
-   for(int i=0;i<10;i++)
-      dbgSerial.printf("%d) 0x%X\n\r", i, buffer[i]);
-   for(int i=cart_size_bytes; i>cart_size_bytes-10; i--)
-      dbgSerial.printf("%d) 0x%X\n\r", i, buffer[i]);
-#endif
-   //uint32_t irqstatus = save_and_disable_interrupts();
-
 	while (1)
 	{
 		while ((addr = ADDR_IN) != addr_prev)
@@ -151,7 +142,7 @@ void __time_critical_func(emulate_standard_cartridge)(int header_length, bool wi
  *
  *
  */
-void emulate_UA_cartridge()
+void __time_critical_func(emulate_UA_cartridge)(void)
 {
 	setup_cartridge_image();
 
@@ -161,8 +152,7 @@ void emulate_UA_cartridge()
 
 
 	if (!reboot_into_cartridge()) return;
-	//__disable_irq();	// Disable interrupts
-   save_and_disable_interrupts();
+   uint32_t irqstatus = save_and_disable_interrupts();
 
 	while (1)
 	{
@@ -194,6 +184,7 @@ void emulate_UA_cartridge()
 		}
 	}
 
+   restore_interrupts(irqstatus);
 	exit_cartridge(addr, addr_prev);
 }
 
@@ -205,7 +196,7 @@ void emulate_UA_cartridge()
  * plus 256 bytes of RAM:
  * RAM read port is $1100 - $11FF, write port is $1000 - $10FF.
  */
-void emulate_FA_cartridge(int header_length, bool withPlusFunctions)
+void __time_critical_func(emulate_FA_cartridge)(int header_length, bool withPlusFunctions)
 {
 	setup_cartridge_image_with_ram();
 
@@ -217,8 +208,7 @@ void emulate_FA_cartridge(int header_length, bool withPlusFunctions)
 	setup_plus_rom_functions();
 
 	if (!reboot_into_cartridge()) return;
-	//__disable_irq();	// Disable interrupts
-   save_and_disable_interrupts();
+   uint32_t irqstatus = save_and_disable_interrupts();
 
 	while (1)
 	{
@@ -293,6 +283,7 @@ void emulate_FA_cartridge(int header_length, bool withPlusFunctions)
 		}
 	}
 
+   restore_interrupts(irqstatus);
 	exit_cartridge(addr, addr_prev);
 }
 
@@ -353,7 +344,7 @@ void emulate_FA_cartridge(int header_length, bool withPlusFunctions)
   @author  Stephen Anthony; with ideas/research from Christian Speckner and
 		   alex_79 and TomSon (of AtariAge)
  */
-void emulate_FE_cartridge()
+void __time_critical_func(emulate_FE_cartridge)(void)
 {
 	setup_cartridge_image();
 
@@ -364,8 +355,7 @@ void emulate_FE_cartridge()
 	bool joy_status = false;
 
 	if (!reboot_into_cartridge()) return;
-	//__disable_irq();	// Disable interrupts
-   save_and_disable_interrupts();
+   uint32_t irqstatus = save_and_disable_interrupts();
 
 	while (1)
 	{
@@ -403,6 +393,7 @@ void emulate_FE_cartridge()
 		lastAccessWasFE = (addr == 0x01FE);
 	}
 
+   restore_interrupts(irqstatus);
 	exit_cartridge(addr, addr_prev);
 }
 
@@ -428,7 +419,7 @@ void emulate_FE_cartridge()
  * http://atariage.com/forums/topic/266245-tigervision-banking-and-low-memory-reads/
  * http://atariage.com/forums/topic/68544-3f-bankswitching/
  */
-void emulate_3F_cartridge()
+void __time_critical_func(emulate_3F_cartridge)(void)
 {
 	setup_cartridge_image();
 
@@ -440,8 +431,7 @@ void emulate_3F_cartridge()
 	bool joy_status = false;
 
 	if (!reboot_into_cartridge()) return;
-	//__disable_irq();	// Disable interrupts
-   save_and_disable_interrupts();
+   uint32_t irqstatus = save_and_disable_interrupts();
 
 	while (1)
 	{
@@ -479,6 +469,7 @@ void emulate_3F_cartridge()
 		}
 	}
 
+   restore_interrupts(irqstatus);
 	exit_cartridge(addr, addr_prev);
 }
 
@@ -538,7 +529,7 @@ Writing to 3E, however, is what's new.  Writing here selects a 1K RAM bank into
 enough space for 256K of RAM.  When RAM is selected, 1000-13FF is the read port while
 1400-17FF is the write port.
  */
-void emulate_3E_cartridge(int header_length, bool withPlusFunctions)
+void __time_critical_func(emulate_3E_cartridge)(int header_length, bool withPlusFunctions)
 {
 	setup_cartridge_image_with_ram();
 
@@ -554,8 +545,7 @@ void emulate_3E_cartridge(int header_length, bool withPlusFunctions)
 	setup_plus_rom_functions();
 
 	if (!reboot_into_cartridge()) return;
-	//__disable_irq();	// Disable interrupts
-   save_and_disable_interrupts();
+   uint32_t irqstatus = save_and_disable_interrupts();
 
 	while (1)
 	{
@@ -646,6 +636,7 @@ void emulate_3E_cartridge(int header_length, bool withPlusFunctions)
 		}
 	}
 
+   restore_interrupts(irqstatus);
 	exit_cartridge(addr, addr_prev);
 }
 
@@ -659,7 +650,7 @@ void emulate_3E_cartridge(int header_length, bool withPlusFunctions)
  *   - read $x800, write $xa00
  *   - read $xc00, write $xe00
  */
-void emulate_3EPlus_cartridge(int header_length, bool withPlusFunctions)
+void __time_critical_func(emulate_3EPlus_cartridge)(int header_length, bool withPlusFunctions)
 {
 	if (cart_size_bytes > 0x010000) return;
 
@@ -677,8 +668,7 @@ void emulate_3EPlus_cartridge(int header_length, bool withPlusFunctions)
 	setup_plus_rom_functions();
 
 	if (!reboot_into_cartridge()) return;
-	//__disable_irq();	// Disable interrupts
-   save_and_disable_interrupts();
+   uint32_t irqstatus = save_and_disable_interrupts();
 
 	while (1)
 	{
@@ -760,6 +750,8 @@ void emulate_3EPlus_cartridge(int header_length, bool withPlusFunctions)
 			}
 		}
 	}
+
+   restore_interrupts(irqstatus);
 	exit_cartridge(addr, addr_prev);
 }
 
@@ -783,7 +775,7 @@ into the following locations:
 
 Like F8, F6, etc. accessing one of the locations indicated will perform the switch.
  */
-void emulate_E0_cartridge()
+void __time_critical_func(emulate_E0_cartridge(void))
 {
 	setup_cartridge_image();
 
@@ -792,8 +784,7 @@ void emulate_E0_cartridge()
 	bool joy_status = false;
 
 	if (!reboot_into_cartridge()) return;
-	//__disable_irq();	// Disable interrupts
-   save_and_disable_interrupts();
+   uint32_t irqstatus = save_and_disable_interrupts();
 
 	while (1)
 	{
@@ -830,6 +821,8 @@ void emulate_E0_cartridge()
 			}
 		}
 	}
+
+   restore_interrupts(irqstatus);
 	exit_cartridge(addr, addr_prev);
 }
 
@@ -848,7 +841,7 @@ void emulate_E0_cartridge()
  * If address AND $1840 == $0800, then we select bank 0
  * If address AND $1840 == $0840, then we select bank 1
  */
-void emulate_0840_cartridge()
+void __time_critical_func(emulate_0840_cartridge)(void)
 {
 	setup_cartridge_image();
 
@@ -857,8 +850,7 @@ void emulate_0840_cartridge()
 	bool joy_status = false;
 
 	if (!reboot_into_cartridge()) return;
-	//__disable_irq();	// Disable interrupts
-   save_and_disable_interrupts();
+   uint32_t irqstatus = save_and_disable_interrupts();
 
 	while (1)
 	{
@@ -890,6 +882,8 @@ void emulate_0840_cartridge()
 			}
 		}
 	}
+
+   restore_interrupts(irqstatus);
 	exit_cartridge(addr, addr_prev);
 }
 
@@ -900,7 +894,7 @@ void emulate_0840_cartridge()
  *  $F400-$F7FF 1K RAM write
  *  $F800-$FFFF 2K ROM
  */
-void emulate_CV_cartridge()
+void __time_critical_func(emulate_CV_cartridge)(void)
 {
 	setup_cartridge_image_with_ram();
 
@@ -909,8 +903,7 @@ void emulate_CV_cartridge()
 	bool joy_status = false;
 
 	if (!reboot_into_cartridge()) return;
-	//__disable_irq();	// Disable interrupts
-   save_and_disable_interrupts();
+   uint32_t irqstatus = save_and_disable_interrupts();
 
 	while (1)
 	{
@@ -957,6 +950,8 @@ void emulate_CV_cartridge()
 			}
 		}
 	}
+
+   restore_interrupts(irqstatus);
 	exit_cartridge(addr, addr_prev);
 }
 
@@ -965,7 +960,7 @@ void emulate_CV_cartridge()
  * 64K cartridge with 16 x 4K banks. An access to $1FF0 switches to the next
  * bank in sequence.
  */
-void emulate_F0_cartridge()
+void __time_critical_func(emulate_F0_cartridge)(void)
 {
 	setup_cartridge_image();
 
@@ -975,8 +970,7 @@ void emulate_F0_cartridge()
 	bool joy_status = false;
 
 	if (!reboot_into_cartridge()) return;
-	//__disable_irq();	// Disable interrupts
-   save_and_disable_interrupts();
+   uint32_t irqstatus = save_and_disable_interrupts();
 
 	while (1)
 	{
@@ -1004,6 +998,8 @@ void emulate_F0_cartridge()
 			}
 		}
 	}
+
+   restore_interrupts(irqstatus);
 	exit_cartridge(addr, addr_prev);
 }
 
@@ -1038,7 +1034,7 @@ Accessing 1FE8 through 1FEB select which 256 byte bank shows up.
 2022-12-23 PlusROM extensions available at standard PlusROM addresses 0x1FF0-0x1FF4 
 
  */
-void emulate_E7_cartridge(int header_length, bool withPlusFunctions)
+void __time_critical_func(emulate_E7_cartridge)(int header_length, bool withPlusFunctions)
 {
 	setup_cartridge_image_with_ram();
 
@@ -1054,8 +1050,7 @@ void emulate_E7_cartridge(int header_length, bool withPlusFunctions)
 	setup_plus_rom_functions();
 
 	if (!reboot_into_cartridge()) return;
-	//__disable_irq();	// Disable interrupts
-   save_and_disable_interrupts();
+   uint32_t irqstatus = save_and_disable_interrupts();
 
 	while (1)
 	{
@@ -1170,6 +1165,8 @@ void emulate_E7_cartridge(int header_length, bool withPlusFunctions)
 			}
 		}
 	}
+
+   restore_interrupts(irqstatus);
 	exit_cartridge(addr, addr_prev);
 }
 
@@ -1199,7 +1196,7 @@ void emulate_E7_cartridge(int header_length, bool withPlusFunctions)
 
 #define UPDATE_MUSIC_COUNTER
 
-void emulate_DPC_cartridge( uint32_t image_size)
+void __time_critical_func(emulate_DPC_cartridge)(uint32_t image_size)
 {
 	//SysTick_Config(SystemCoreClock / 21000);	// 21KHz
 
@@ -1263,8 +1260,7 @@ void emulate_DPC_cartridge( uint32_t image_size)
 		return ;
 	}
 
-	//__disable_irq();	// Disable interrupts
-   save_and_disable_interrupts();
+   uint32_t irqstatus = save_and_disable_interrupts();
 
 	while (1)
 	{
@@ -1474,6 +1470,8 @@ void emulate_DPC_cartridge( uint32_t image_size)
 		}
 
 	}
+
+   restore_interrupts(irqstatus);
 	exit_cartridge(addr, addr_prev);
 }
 
@@ -1521,7 +1519,7 @@ static void switchLayout(uint8_t** segments, uint8_t index) {
 	}
 }
 
-void emulate_pp_cartridge( uint8_t* ram) {
+void __time_critical_func(emulate_pp_cartridge)(uint8_t* ram) {
 	uint8_t* segmentLayout[32];
 
 	bool bankswitch_pending = false;
@@ -1537,8 +1535,7 @@ void emulate_pp_cartridge( uint8_t* ram) {
 	}
 
 	if (!reboot_into_cartridge()) return;
-	//__disable_irq();
-   save_and_disable_interrupts();
+   uint32_t irqstatus = save_and_disable_interrupts();
 
 	uint8_t** segments = segmentLayout;
 
@@ -1597,6 +1594,8 @@ void emulate_pp_cartridge( uint8_t* ram) {
 			}
 		}
 	}
+
+   restore_interrupts(irqstatus);
 	exit_cartridge(addr, addr_prev);
 }
 

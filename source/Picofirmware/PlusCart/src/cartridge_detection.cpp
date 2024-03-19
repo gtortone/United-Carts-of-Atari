@@ -10,7 +10,6 @@
 #include "cartridge_detection.h"
 #include "global.h"
 
-
 /*************************************************************************
  * Cartridge Type Detection
  *************************************************************************/
@@ -59,14 +58,8 @@ int searchForBytes(unsigned char *bytes, unsigned int size, unsigned char *signa
 
 int isProbablyPLS(unsigned int size, unsigned char *bytes)
 {
-   //dbgSerial.printf("inside isProbablyPLS()\n\r");
-   //dbgSerial.printf("size = %d\n\r", size);
-
    uint16_t nmi_p = (bytes[size-5] << 8) + bytes[size-6];
-   //dbgSerial.printf("nmi_p = %d\n\r", nmi_p);
-
 	int i = nmi_p - 0x1000 , hostHasNoDot = 1;
-   //dbgSerial.printf("i = %d\n\r", i);
 
 	if(i < 0)
 		return 0;
@@ -91,7 +84,6 @@ int isProbablyPLS(unsigned int size, unsigned char *bytes)
 
 	unsigned char signature[] = { 0x8D, 0xF1, 0x1F };  // STA $1FF1 // Send write buffer signature
 
-   //dbgSerial.printf("call searchForBytes()\n\r");
 	return searchForBytes(bytes, size, signature, 3, 1);
 }
 
@@ -130,7 +122,6 @@ int isProbablyUA(unsigned int size, unsigned char *bytes)
 
 int isProbablySC(unsigned int size, unsigned char *bytes)
 {
-   //dbgSerial.printf("inside isProbablySC()\n\r");
 	unsigned int banks = size/4096;
 	// check 2K for SC
 	if(banks == 0 && size >= 256 )
