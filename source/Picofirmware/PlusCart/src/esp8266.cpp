@@ -31,7 +31,7 @@
 WiFiClient client;
 
 char tmp_uart_buffer[50];
-char __in_flash("esp8266_at_version") esp8266_at_version[15];
+char esp8266_at_version[15];
 
 extern char pico_uid[2 * PICO_UNIQUE_BOARD_ID_SIZE_BYTES + 1];
 

@@ -752,27 +752,6 @@ int __time_critical_func(emulate_firmware_cartridge)() {
 
    irqstatus = save_and_disable_interrupts(); // Disable interrupts
    
-#if 0
-   // test loop to run a 4K cartridge (Defender)
-   // emulate standard 2K/4K cartridge (no bankswitch)
-   while(1) {
-
-      while( (addr = ADDR_IN) != addr_prev )
-          addr_prev = addr;
-
-       // got a stable address
-       if (addr & A12_GPIO_MASK) {
-
-          DATA_OUT(defender_rom[addr & 0xFFF]);
-          SET_DATA_MODE_OUT
-             // wait for address bus to change
-             while( (gpio_get_all() & ADDR_GPIO_MASK) == addr)
-                ;
-          SET_DATA_MODE_IN
-       }
-    }  // end loop
-#endif
-
 	while (true) {
 		while ((addr = ADDR_IN) != addr_prev)
 			addr_prev = addr;

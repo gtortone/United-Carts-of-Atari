@@ -54,12 +54,13 @@
 #endif
 
 #include "pico/unique_id.h"
+#include "hardware/vreg.h"
 #include "flash.h"
 
 #include "cartridge_io.h"
 #include "cartridge_firmware.h"
 //#include "cartridge_emulation_ACE.h"
-//#include "cartridge_emulation_ar.h"
+#include "cartridge_emulation_ar.h"
 //#include "cartridge_emulation_ELF.h"
 #include "cartridge_detection.h"
 #include "cartridge_emulation.h"
@@ -192,8 +193,6 @@ uint8_t plus_store_status[1];
 MENU_ENTRY menu_entries[NUM_MENU_ITEMS];
 
 /* Private function prototypes -----------------------------------------------*/
-void SystemClock_Config(void);
-static void MX_GPIO_Init(void);
 enum e_status_message __in_flash("buildMenuFromPath") buildMenuFromPath( MENU_ENTRY * );
 void append_entry_to_path(MENU_ENTRY *);
 
@@ -1230,10 +1229,10 @@ void emulate_cartridge(CART_TYPE cart_type, MENU_ENTRY *d)
 	else if (cart_type.base_type == base_type_DPC)
 		emulate_DPC_cartridge((uint32_t)cart_size_bytes);
 
-#if 0
 	else if (cart_type.base_type == base_type_AR)
 		emulate_ar_cartridge(curPath, cart_size_bytes, buffer, user_settings.tv_mode, d);
 
+#if 0
 	else if (cart_type.base_type == base_type_PP)
 		emulate_pp_cartridge( buffer + 8*1024);
 
@@ -1393,7 +1392,8 @@ void setup() {
 
   set_sys_clock_khz(250000, true);
 
-  gpio_init_mask((uint)(ADDR_GPIO_MASK | DATA_GPIO_MASK | A12_GPIO_MASK));
+  gpio_init_mask(ADDR_GPIO_MASK | DATA_GPIO_MASK | A12_GPIO_MASK);
+  gpio_set_dir_in_masked(ADDR_GPIO_MASK | DATA_GPIO_MASK | A12_GPIO_MASK);
 
   // there are some issue at startup due to time required to setup pins
   // if firmware starts too late 2600 bus will hang...
