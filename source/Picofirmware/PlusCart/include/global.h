@@ -34,6 +34,11 @@
 #define CHARS_PER_LINE					32
 #define STATUS_MESSAGE_LENGTH           256
 
+// buffers
+#define BUFFER_SIZE     96 
+#define BUFFER_SIZE_KB  96
+#define ERAM_SIZE_KB    64    // extra RAM
+
 #define NUM_MENU_ITEMS			      	1024
 
 #define MENU_TEXT_GO_BACK                   "(Go Back)"

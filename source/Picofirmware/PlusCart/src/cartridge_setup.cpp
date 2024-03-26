@@ -16,9 +16,6 @@
 
 #include "cartridge_setup.h"
 
-#define BUFFER_SIZE_KB  96
-#define ERAM_SIZE_KB    64    // extra RAM
-
 #define RAM_BANKS (BUFFER_SIZE_KB / 4)             //    24    
 #define ERAM_BANKS (ERAM_SIZE_KB / 4)              //    16
 #define FLASH_BANKS (64 - RAM_BANKS - ERAM_BANKS)  //    24

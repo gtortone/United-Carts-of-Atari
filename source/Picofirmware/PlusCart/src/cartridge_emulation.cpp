@@ -1182,23 +1182,22 @@ void __time_critical_func(emulate_E7_cartridge)(int header_length, bool withPlus
  * updated to DirtyHairy's implementation at:
  * https://github.com/DirtyHairy/UnoCart-2600/blob/master/source/STM32firmware/Atari2600Cart/src/cartridge_dpc.c
  *
- * using ccmram here should not be a problem, as long as we don't exit emulation and return to Cart menu.
+ * using eram here should not be a problem, as long as we don't exit emulation and return to Cart menu.
  *
  */
 
-/*
+// 47 us = 21 kHz
 #define UPDATE_MUSIC_COUNTER { \
-		uint32_t systick = SysTick->VAL; \
-		if (systick > systick_lastval) music_counter++; \
-		systick_lastval = systick; \
+		uint32_t systick = time_us_32(); \
+      if(systick_lastval > systick) \
+         systick_lastval = systick; \
+      else if(systick > (systick_lastval + 47)) { \
+		   systick_lastval = systick; \
+         music_counter++; \
+      } \
 }
-*/
 
-#define UPDATE_MUSIC_COUNTER
-
-void __time_critical_func(emulate_DPC_cartridge)(uint32_t image_size)
-{
-	//SysTick_Config(SystemCoreClock / 21000);	// 21KHz
+void __time_critical_func(emulate_DPC_cartridge)(uint32_t image_size) {
 
 	uint32_t systick_lastval = 0;
 	uint32_t music_counter = 0;
@@ -1220,9 +1219,14 @@ void __time_critical_func(emulate_DPC_cartridge)(uint32_t image_size)
 	// Initialise the DPC's random number generator register (must be non-zero)
 	uint32_t DpcRandom = 1;
 
-	uint8_t* ccm = CCM_RAM;
+   extern uint8_t *eram;
+   eram = (uint8_t *) malloc(ERAM_SIZE_KB * 1024);
 
-	uint8_t* soundAmplitudes = ccm;
+   // out of memory...
+   if(!eram)
+      return;
+
+	uint8_t* soundAmplitudes = eram;
 	soundAmplitudes[0] = 0x00;
 	soundAmplitudes[1] = 0x04;
 	soundAmplitudes[2] = 0x05;
@@ -1231,24 +1235,23 @@ void __time_critical_func(emulate_DPC_cartridge)(uint32_t image_size)
 	soundAmplitudes[5] = 0x0a;
 	soundAmplitudes[6] = 0x0b;
 	soundAmplitudes[7] = 0x0f;
-	ccm += 8;
+	eram += 8;
 
-	uint8_t* DpcTops = ccm;
-	ccm += 8;
+	uint8_t* DpcTops = eram;
+	eram += 8;
 
-	uint8_t* DpcBottoms = ccm;
-	ccm += 8;
+	uint8_t* DpcBottoms = eram;
+	eram += 8;
 
-	uint8_t* DpcFlags = ccm;
-	ccm += 8;
+	uint8_t* DpcFlags = eram;
+	eram += 8;
 
-	//uint16_t* DpcCounters = (void*)ccm;
-	uint16_t* DpcCounters = (uint16_t *)ccm;
-	ccm += 16;
+	uint16_t* DpcCounters = (uint16_t *)eram;
+	eram += 16;
 
-	memcpy(ccm, buffer, image_size);
-	uint8_t* buffer_ptr = ccm;
-	ccm += image_size;
+	memcpy(eram, buffer, image_size);
+	uint8_t* buffer_ptr = eram;
+	eram += image_size;
 
 	// Initialise the DPC registers
 	for(int i = 0; i < 8; ++i) {
@@ -1262,58 +1265,55 @@ void __time_critical_func(emulate_DPC_cartridge)(uint32_t image_size)
 
    uint32_t irqstatus = save_and_disable_interrupts();
 
-	while (1)
-	{
-		while ((addr = ADDR_IN) != addr_prev) addr_prev = addr;
+	while (1) {
+
+		while ((addr = ADDR_IN) != addr_prev)
+         addr_prev = addr;
 
 		// got a stable address
-		if (addr & 0x1000)
-		{ // A12 high
+		if (addr & 0x1000) { // A12 high
 
-			if (addr < 0x1040)
-			{	// DPC read
+			if (addr < 0x1040) {	// DPC read
+                             
 				unsigned char index = addr & 0x07;
 				unsigned char function = (addr >> 3) & 0x07;
-
 				unsigned char result = 0;
-				switch (function)
-				{
-				case 0x00:
-				{
-					if(index < 4)
-					{	// random number read
-						DpcRandom ^= DpcRandom << 3;
-						DpcRandom ^= DpcRandom >> 5;
-						result = (unsigned char)DpcRandom;
-					}
-					else
-					{	// sound
-						result = soundAmplitudes[music_modes & music_flags];
-					}
-					break;
-				}
 
-				case 0x01:
-				{	// DFx display data read
-					result = DpcDisplayPtr[2047 - DpcCounters[index]];
-					break;
-				}
+            if(function == 0) {
 
-				case 0x02:
-				{	// DFx display data read AND'd w/flag
-					result = DpcDisplayPtr[2047 - DpcCounters[index]] & DpcFlags[index];
-					break;
-				}
+               if(index < 4) {
+                  // random number read
+                  DpcRandom ^= DpcRandom << 3;
+                  DpcRandom ^= DpcRandom >> 5;
+                  result = (unsigned char)DpcRandom;
+               } else {
+                  // sound
+                  result = soundAmplitudes[music_modes & music_flags];
+               }
+               UPDATE_MUSIC_COUNTER;
 
-				case 0x07:
-				{	// DFx flag
-					result = DpcFlags[index];
-					break;
-				}
+            } else if(function == 1) {
+               
+               // DFx display data read
+               result = DpcDisplayPtr[2047 - DpcCounters[index]];
+               UPDATE_MUSIC_COUNTER;
 
-				default:
-					break;
-				}
+            } else if(function == 2) {
+
+               // DFx display data read AND'd w/flag
+               result = DpcDisplayPtr[2047 - DpcCounters[index]] & DpcFlags[index];
+               UPDATE_MUSIC_COUNTER;
+
+            } else if(function == 7) {
+
+               // DFx flag
+               result = DpcFlags[index];
+               UPDATE_MUSIC_COUNTER;
+
+            } else {
+
+               UPDATE_MUSIC_COUNTER; 
+            }
 
 				DATA_OUT(result);
 				SET_DATA_MODE_OUT
@@ -1332,7 +1332,9 @@ void __time_critical_func(emulate_DPC_cartridge)(uint32_t image_size)
 
 				UPDATE_MUSIC_COUNTER;
 
-				while (ADDR_IN == addr) ;
+				while (ADDR_IN == addr) 
+               UPDATE_MUSIC_COUNTER;
+            
 				SET_DATA_MODE_IN;
 				RESET_ADDR;
 			}
@@ -1344,7 +1346,11 @@ void __time_critical_func(emulate_DPC_cartridge)(uint32_t image_size)
 
 				UPDATE_MUSIC_COUNTER;
 
-				while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
+				while (ADDR_IN == addr) { 
+               data_prev = data; 
+               data = DATA_IN; 
+               UPDATE_MUSIC_COUNTER;
+            }
 				RESET_ADDR;
 
 				unsigned char value = data_prev;
@@ -1362,16 +1368,8 @@ void __time_critical_func(emulate_DPC_cartridge)(uint32_t image_size)
 
 						dpctop_music &= (uint32_t)(~(0x000000ff << (8*(index - 0x05))));
 						dpctop_music |= ((uint32_t)value << (8*(index - 0x05)));
-
-
-
-//						dpctop_music = (dpctop_music & ~(0x000000ff << (8*(index - 0x05)))) | ((uint32_t)value << (8*(index - 0x05)));
-/* This code might compile without warnings,
- * but then the sound is awful!
-  						uint8_t shift = (uint8_t)(8 * (index - 0x05));
-						dpctop_music &= (uint32_t)(~(0x000000ff << shift));
-						dpctop_music |= (uint32_t)(value << shift);
-*/					}
+					}
+               UPDATE_MUSIC_COUNTER;
 					break;
 				}
 
@@ -1382,19 +1380,11 @@ void __time_critical_func(emulate_DPC_cartridge)(uint32_t image_size)
 					if(ctr == value)
 						DpcFlags[index] = 0x00;
 
-
-
 					if (index >= 0x05) {
 						dpcbottom_music &= (uint32_t) (~(0x00000000000000ff << (8*(index - 0x05))));
 						dpcbottom_music |= ((uint32_t)value << (8*(index - 0x05)));
-
-//						dpcbottom_music = (dpcbottom_music & ~(0x000000ff << (8*(index - 0x05)))) | ((uint32_t)value << (8*(index - 0x05)));
-/* This code might compile without warnings,
- * but then the sound is awful!
- 						uint8_t shift = (uint8_t) (index - 0x05);
-						dpcbottom_music &= (uint32_t)(~(0x000000ff << shift));
-						dpcbottom_music |= (uint32_t)(value << shift);
-*/					}
+               }
+               UPDATE_MUSIC_COUNTER;
 					break;
 				}
 
@@ -1417,16 +1407,19 @@ void __time_critical_func(emulate_DPC_cartridge)(uint32_t image_size)
 					if (index >= 0x05)
 						music_modes = (uint8_t)((music_modes & ~(0x01 << (index - 0x05))) | ((value & 0x10) >> (0x09 - index)));
 
+               UPDATE_MUSIC_COUNTER;
 					break;
 				}
 
 				case 0x06:
 				{	// Random Number Generator Reset
 					DpcRandom = 1;
+               UPDATE_MUSIC_COUNTER;
 					break;
 				}
 
 				default:
+               UPDATE_MUSIC_COUNTER;
 					break;
 				}
 			}
@@ -1446,7 +1439,9 @@ void __time_critical_func(emulate_DPC_cartridge)(uint32_t image_size)
 
 				UPDATE_MUSIC_COUNTER;
 
-				while (ADDR_IN == addr) ;
+				while (ADDR_IN == addr) 
+               UPDATE_MUSIC_COUNTER;
+
 				RESET_ADDR;
 				SET_DATA_MODE_IN;
 			}
@@ -1458,8 +1453,11 @@ void __time_critical_func(emulate_DPC_cartridge)(uint32_t image_size)
 
 			UPDATE_MUSIC_COUNTER;
 
-			while (ADDR_IN == addr);
+			while (ADDR_IN == addr)
+            UPDATE_MUSIC_COUNTER;
+
 			RESET_ADDR;
+
 		}else if(addr == EXIT_SWCHB_ADDR){
 			while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
 			if( !(data_prev & 0x1) && joy_status)
@@ -1468,10 +1466,13 @@ void __time_critical_func(emulate_DPC_cartridge)(uint32_t image_size)
 			while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
 			joy_status = !(data_prev & 0x80);
 		}
-
 	}
 
    restore_interrupts(irqstatus);
+
+   if(eram)
+      free(eram);
+
 	exit_cartridge(addr, addr_prev);
 }
 

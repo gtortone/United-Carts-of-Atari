@@ -30,8 +30,6 @@
 #ifndef __MAIN_H
 #define __MAIN_H
 
-#define BUFFER_SIZE     96 // kilobytes
-
 enum e_status_message {
 	STATUS_NONE = -2,
 	STATUS_MESSAGE_STRING,
