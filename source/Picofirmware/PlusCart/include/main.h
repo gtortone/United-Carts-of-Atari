@@ -30,16 +30,7 @@
 #ifndef __MAIN_H
 #define __MAIN_H
 
-#include <SPI.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
- 
-//FIXME
-#define BUFFER_SIZE				   96   // kilobytes
-#define CCM_RAM_SIZE             64   // kilobytes
-#define CCM_RAM ((uint8_t*)0x10000000)
+#define BUFFER_SIZE     96 // kilobytes
 
 enum e_status_message {
 	STATUS_NONE = -2,
@@ -77,10 +68,5 @@ enum e_status_message {
 	STATUS_APPEARANCE,
 
 };
-
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* __MAIN_H */

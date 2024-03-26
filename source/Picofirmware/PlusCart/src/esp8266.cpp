@@ -203,7 +203,8 @@ uint32_t esp8266_PlusStore_API_range_request(char *path, http_range range, uint8
    return response_size;
 }
 
-uint32_t esp8266_PlusStore_API_file_request(uint8_t *ext_buffer, char *path, uint32_t start_pos, uint32_t length ){
+uint32_t esp8266_PlusStore_API_file_request(uint8_t *ext_buffer, char *path, uint32_t start_pos, uint32_t length) {
+
 	uint32_t bytes_read = 0, chunk_read = 0;
 	uint32_t max_range_pos = start_pos + length - 1;
 	uint32_t request_count = ( length + ( MAX_RANGE_SIZE - 1 ) )  / MAX_RANGE_SIZE;

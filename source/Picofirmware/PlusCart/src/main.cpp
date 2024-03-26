@@ -54,19 +54,18 @@
 #endif
 
 #include "pico/unique_id.h"
-#include "hardware/vreg.h"
 #include "flash.h"
 
 #include "cartridge_io.h"
 #include "cartridge_firmware.h"
 //#include "cartridge_emulation_ACE.h"
 #include "cartridge_emulation_ar.h"
-//#include "cartridge_emulation_ELF.h"
+#include "cartridge_emulation_ELF.h"
 #include "cartridge_detection.h"
 #include "cartridge_emulation.h"
-//#include "cartridge_emulation_df.h"
-//#include "cartridge_emulation_bf.h"
-//#include "cartridge_emulation_sb.h"
+#include "cartridge_emulation_df.h"
+#include "cartridge_emulation_bf.h"
+#include "cartridge_emulation_sb.h"
 //#include "cartridge_emulation_dpcp.h"
 
 void truncate_curPath(void);
@@ -549,8 +548,6 @@ enum e_status_message buildMenuFromPath( MENU_ENTRY *d )  {
                      strtok(NULL, "/");
 
 					    	if(esp8266_wifi_connect(strtok(NULL, "/"), strtok(NULL, "/"))) {     // ssid, password
-//                     if(esp8266_wifi_connect( &curPath[SIZEOF_WIFI_SELECT_BASE_PATH],
-//      &curPath[SIZEOF_WIFI_SELECT_BASE_PATH + 33])) {
 					        	menuStatusMessage = wifi_connected;
 					    	}else{
 					        	menuStatusMessage = wifi_not_connected;
@@ -1027,15 +1024,16 @@ CART_TYPE identify_cartridge( MENU_ENTRY *d )
 
 	// Check with types that have headers first since they are more reliable than huristics
 
-   /*
 	if(isElf(bytes_read, buffer))
 	{
 		cart_type.base_type = base_type_ELF;
 	}
+   /* 
 	else if(is_ace_cartridge(bytes_read, buffer)){
 		cart_type.base_type = base_type_ACE;
 	}
-	else */ if (d->filesize <= 64 * 1024 && (d->filesize % 1024) == 0 && isProbably3EPlus(d->filesize, buffer))
+   */
+	else if (d->filesize <= 64 * 1024 && (d->filesize % 1024) == 0 && isProbably3EPlus(d->filesize, buffer))
 	{
 		cart_type.base_type = base_type_3EPlus;
 	}
@@ -1232,7 +1230,6 @@ void emulate_cartridge(CART_TYPE cart_type, MENU_ENTRY *d)
 	else if (cart_type.base_type == base_type_AR)
 		emulate_ar_cartridge(curPath, cart_size_bytes, buffer, user_settings.tv_mode, d);
 
-#if 0
 	else if (cart_type.base_type == base_type_PP)
 		emulate_pp_cartridge( buffer + 8*1024);
 
@@ -1251,11 +1248,15 @@ void emulate_cartridge(CART_TYPE cart_type, MENU_ENTRY *d)
 	else if (cart_type.base_type == base_type_3EPlus)
 		emulate_3EPlus_cartridge(offset, cart_type.withPlusFunctions);
 
+#if 0
 	else if (cart_type.base_type == base_type_DPCplus)
 		emulate_DPCplus_cartridge(cart_size_bytes);
+#endif
 
 	else if (cart_type.base_type == base_type_SB)
 		emulate_SB_cartridge(curPath, cart_size_bytes, buffer, d);
+
+#if 0
 	else if (cart_type.base_type == base_type_ACE)
 	{
 		static unsigned char CCMUsageFinder __attribute__((section(".ccmram#"))); //Method of finding where allocation has reached for CCM RAM

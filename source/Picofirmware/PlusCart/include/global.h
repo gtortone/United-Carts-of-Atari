@@ -24,6 +24,8 @@
 
 #define UNOCART      1
 #define PLUSCART     2
+#define PICOCART     3
+
 #define MENU_TYPE    PLUSCART
 
 #define VERSION                   "2.3.17"
@@ -184,6 +186,7 @@ typedef struct {
 	uint8_t tv_mode;
 	uint8_t font_style;
 	uint8_t line_spacing;
+   uint8_t first_free_flash_sector;
 } USER_SETTINGS;
 
 extern USER_SETTINGS user_settings;

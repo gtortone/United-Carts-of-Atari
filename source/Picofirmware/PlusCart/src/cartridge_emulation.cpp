@@ -1481,7 +1481,8 @@ void __time_critical_func(emulate_DPC_cartridge)(uint32_t image_size)
  * https://github.com/DirtyHairy/UnoCart-2600/blob/master/source/STM32firmware/Atari2600Cart/src/cartridge_pp.c
  *
  */
-static void setupSegments( uint8_t** segments, uint8_t zero, uint8_t one, uint8_t two, uint8_t three) {
+static void setupSegments(uint8_t** segments, uint8_t zero, uint8_t one, uint8_t two, uint8_t three) {
+
 	segments[0] = buffer + (zero << 10);
 	segments[1] = buffer + (one  << 10);
 	segments[2] = buffer + (two << 10);
@@ -1489,27 +1490,28 @@ static void setupSegments( uint8_t** segments, uint8_t zero, uint8_t one, uint8_
 }
 
 static void switchLayout(uint8_t** segments, uint8_t index) {
+
 	switch (index) {
 	case 0:
-		return setupSegments( segments, 0, 0, 1 ,2);
+		return setupSegments(segments, 0, 0, 1 ,2);
 
 	case 1:
-		return setupSegments( segments, 0, 1, 3 ,2);
+		return setupSegments(segments, 0, 1, 3 ,2);
 
 	case 2:
-		return setupSegments( segments, 4, 5, 6, 7);
+		return setupSegments(segments, 4, 5, 6, 7);
 
 	case 3:
-		return setupSegments( segments, 7, 4, 3, 2);
+		return setupSegments(segments, 7, 4, 3, 2);
 
 	case 4:
-		return setupSegments( segments, 0, 0, 6, 7);
+		return setupSegments(segments, 0, 0, 6, 7);
 
 	case 5:
-		return setupSegments( segments, 0, 1, 7, 6);
+		return setupSegments(segments, 0, 1, 7, 6);
 
 	case 6:
-		return setupSegments( segments, 3, 2, 4, 5);
+		return setupSegments(segments, 3, 2, 4, 5);
 
 	case 7:
 		return setupSegments(segments, 6, 0, 5, 1);
@@ -1520,6 +1522,7 @@ static void switchLayout(uint8_t** segments, uint8_t index) {
 }
 
 void __time_critical_func(emulate_pp_cartridge)(uint8_t* ram) {
+
 	uint8_t* segmentLayout[32];
 
 	bool bankswitch_pending = false;
@@ -1530,16 +1533,17 @@ void __time_critical_func(emulate_pp_cartridge)(uint8_t* ram) {
 	uint8_t data = 0, data_prev = 0;
 	bool joy_status = false;
 
-	for (uint8_t i = 0; i <= 7; i++) {
-		switchLayout( &segmentLayout[4*i], i);
-	}
+	for (uint8_t i = 0; i <= 7; i++)
+		switchLayout(&segmentLayout[4*i], i);
 
 	if (!reboot_into_cartridge()) return;
-   uint32_t irqstatus = save_and_disable_interrupts();
 
 	uint8_t** segments = segmentLayout;
 
+   uint32_t irqstatus = save_and_disable_interrupts();
+
 	while (1) {
+
 		while (((addr = ADDR_IN) != addr_prev) || (addr != addr_prev2))
 		{
 			addr_prev2 = addr_prev;
@@ -1584,13 +1588,13 @@ void __time_critical_func(emulate_pp_cartridge)(uint8_t* ram) {
 				bankswitch_pending = true;
 				pending_bank = zaddr & 0x07;
 				bankswitch_counter = 3;
-			}else if(addr == EXIT_SWCHB_ADDR){
+			} else if(addr == EXIT_SWCHB_ADDR){
 				while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
 				if( !(data_prev & 0x1) && joy_status)
 					break;
 			}else if(addr == SWCHA){
 				while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
-				joy_status = !(data_prev & 0x80);
+				joy_status = !(data_prev & 0x80); 
 			}
 		}
 	}
