@@ -244,8 +244,6 @@ int esp8266_PlusROM_API_connect(unsigned int size){
    strcat(http_request_header, (char *)"\",80,1\r\n");
 
    client.connect((char *)&buffer[offset], 80);
-   dbg("host: %s\r\n", (char *)&buffer[offset]);
-   dbg("page: %s\r\n", (char *)&buffer[i]);
 
    http_request_header[0] = '\0';
    strcat(http_request_header, (char *)"POST /");

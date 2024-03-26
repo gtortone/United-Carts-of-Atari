@@ -62,6 +62,7 @@ void __time_critical_func(emulate_standard_cartridge)(int header_length, bool wi
 			addr_prev = addr;
 		// got a stable address
 		if (addr & 0x1000) { // A12 high
+#if USE_WIFI
 			if(withPlusFunctions && addr > 0x1fef && addr < 0x1ff4) {
 				if(addr == 0x1ff2 ) { // read from receive buffer
 					DATA_OUT(receive_buffer[receive_buffer_read_pointer]);
@@ -75,8 +76,8 @@ void __time_critical_func(emulate_standard_cartridge)(int header_length, bool wi
 					SET_DATA_MODE_IN
 				} else if(addr == 0x1ff1) { // write to send Buffer and start Request !!
 					while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
-					if(huart_state == No_Transmission)
-						huart_state = Send_Start;
+					if(uart_state == No_Transmission)
+						uart_state = Send_Start;
 					out_buffer[out_buffer_write_pointer] = data_prev;
 				} else if(addr == 0x1ff3) { // read receive Buffer length
 					DATA_OUT(receive_buffer_write_pointer - receive_buffer_read_pointer);
@@ -91,6 +92,7 @@ void __time_critical_func(emulate_standard_cartridge)(int header_length, bool wi
 					out_buffer[out_buffer_write_pointer++] = data_prev;
 				}
 			} else {
+#endif
 				if (addr >= lowBS && addr <= highBS)	// bank-switch
 					bankPtr = &cart_rom[(addr-lowBS)*4*1024];
 				if (isSC && (addr & 0x1F00) == 0x1000)
@@ -118,7 +120,9 @@ void __time_critical_func(emulate_standard_cartridge)(int header_length, bool wi
 					while (ADDR_IN == addr) { process_transmission(); }
 					SET_DATA_MODE_IN
 				}
+#if USE_WIFI
 			}
+#endif 
 		} else {
 			if(addr == EXIT_SWCHB_ADDR){
 				while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
@@ -217,6 +221,7 @@ void __time_critical_func(emulate_FA_cartridge)(int header_length, bool withPlus
 		// got a stable address
 		if (addr & 0x1000)
 		{ // A12 high
+#if USE_WIFI
 			if(withPlusFunctions && addr > 0x1fef && addr < 0x1ff4){
 				if(addr == 0x1ff2 ){// read from receive buffer
 					DATA_OUT(receive_buffer[receive_buffer_read_pointer]);
@@ -229,8 +234,8 @@ void __time_critical_func(emulate_FA_cartridge)(int header_length, bool withPlus
 					SET_DATA_MODE_IN
 				}else if(addr == 0x1ff1){ // write to send Buffer and start Request !!
 					while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
-					if(huart_state == No_Transmission)
-						huart_state = Send_Start;
+					if(uart_state == No_Transmission)
+						uart_state = Send_Start;
 					out_buffer[out_buffer_write_pointer] = data_prev;
 				}else if(addr == 0x1ff3){ // read receive Buffer length
 					DATA_OUT(receive_buffer_write_pointer - receive_buffer_read_pointer);
@@ -243,6 +248,7 @@ void __time_critical_func(emulate_FA_cartridge)(int header_length, bool withPlus
 					out_buffer[out_buffer_write_pointer++] = data_prev;
 				}
 			}else{
+#endif
 				if (addr >= 0x1FF8 && addr <= 0x1FFA)	// bank-switch
 					bankPtr = &cart_rom[(addr-0x1FF8)*4*1024];
 
@@ -268,7 +274,9 @@ void __time_critical_func(emulate_FA_cartridge)(int header_length, bool withPlus
 					while (ADDR_IN == addr){ process_transmission(); }
 					SET_DATA_MODE_IN
 				}
+#if USE_WIFI
 			}
+#endif
 		}else{
 			if(addr == EXIT_SWCHB_ADDR){
 				while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
@@ -557,6 +565,7 @@ void __time_critical_func(emulate_3E_cartridge)(int header_length, bool withPlus
 		// got a stable address
 		if (addr & 0x1000)
 		{ // A12 high
+#if USE_WIFI
 			if(withPlusFunctions && addr > 0x1fef && addr < 0x1ff4){
 				if(addr == 0x1ff2 ){// read from receive buffer
 					DATA_OUT(receive_buffer[receive_buffer_read_pointer]);
@@ -569,8 +578,8 @@ void __time_critical_func(emulate_3E_cartridge)(int header_length, bool withPlus
 					SET_DATA_MODE_IN
 				}else if(addr == 0x1ff1){ // write to send Buffer and start Request !!
 					while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
-					if(huart_state == No_Transmission)
-						huart_state = Send_Start;
+					if(uart_state == No_Transmission)
+						uart_state = Send_Start;
 					out_buffer[out_buffer_write_pointer] = data_prev;
 				}else if(addr == 0x1ff3){ // read receive Buffer length
 					DATA_OUT(receive_buffer_write_pointer - receive_buffer_read_pointer);
@@ -583,6 +592,7 @@ void __time_critical_func(emulate_3E_cartridge)(int header_length, bool withPlus
 					out_buffer[out_buffer_write_pointer++] = data_prev;
 				}
 			}else{
+#endif
 				if (bankIsRAM && (addr & 0xC00) == 0x400)
 				{	// we are accessing the RAM write addresses ($1400-$17FF)
 					// read last data on the bus before the address lines change
@@ -607,7 +617,9 @@ void __time_critical_func(emulate_3E_cartridge)(int header_length, bool withPlus
 					while (ADDR_IN == addr){process_transmission();}
 					SET_DATA_MODE_IN
 				}
+#if USE_WIFI
 			}
+#endif
 		}
 		else
 		{	// A12 low, read last data on the bus before the address lines change
@@ -678,6 +690,7 @@ void __time_critical_func(emulate_3EPlus_cartridge)(int header_length, bool with
 		// got a stable address
 		if (addr & 0x1000)
 		{ // A12 high
+#if USE_WIFI
 			if(withPlusFunctions && addr > 0x1fef && addr < 0x1ff4){
 				if(addr == 0x1ff2 ){// read from receive buffer
 					DATA_OUT(receive_buffer[receive_buffer_read_pointer]);
@@ -690,8 +703,8 @@ void __time_critical_func(emulate_3EPlus_cartridge)(int header_length, bool with
 					SET_DATA_MODE_IN
 				}else if(addr == 0x1ff1){ // write to send Buffer and start Request !!
 					while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
-					if(huart_state == No_Transmission)
-						huart_state = Send_Start;
+					if(uart_state == No_Transmission)
+						uart_state = Send_Start;
 					out_buffer[out_buffer_write_pointer] = data_prev;
 				}else if(addr == 0x1ff3){ // read receive Buffer length
 					DATA_OUT(receive_buffer_write_pointer - receive_buffer_read_pointer);
@@ -704,6 +717,7 @@ void __time_critical_func(emulate_3EPlus_cartridge)(int header_length, bool with
 					out_buffer[out_buffer_write_pointer++] = data_prev;
 				}
 			}else{
+ #endif
 				act_bank = (( addr & 0x0C00 ) >> 10); // bit 10 an 11 define the bank
 				if (bankIsRAM[act_bank] && (addr & 0x200) )
 				{	// we are accessing a RAM write address ($1200-$13FF, $1600-$17FF, $1A00-$1BFF or $1E00-$1FFF)
@@ -725,7 +739,9 @@ void __time_critical_func(emulate_3EPlus_cartridge)(int header_length, bool with
 					SET_DATA_MODE_IN
 				}
 
+#if USE_WIFI
 			}
+#endif
 		}else{
 			if (addr == 0x3e) {
 				while (ADDR_IN == addr) { data_prev = data; data = DATA_IN;}
@@ -1061,6 +1077,7 @@ void __time_critical_func(emulate_E7_cartridge)(int header_length, bool withPlus
 		{ // A12 high
 			if (addr & 0x0800)
 			{	// higher 2k cartridge ROM area
+#if USE_WIFI
 				if(withPlusFunctions && addr > 0x1fef && addr < 0x1ff4){
 					if(addr == 0x1ff2 ){// read from receive buffer
 						DATA_OUT(receive_buffer[receive_buffer_read_pointer]);
@@ -1073,8 +1090,8 @@ void __time_critical_func(emulate_E7_cartridge)(int header_length, bool withPlus
 						SET_DATA_MODE_IN
 					}else if(addr == 0x1ff1){ // write to send Buffer and start Request !!
 						while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
-						if(huart_state == No_Transmission)
-							huart_state = Send_Start;
+						if(uart_state == No_Transmission)
+							uart_state = Send_Start;
 						out_buffer[out_buffer_write_pointer] = data_prev;
 					}else if(addr == 0x1ff3){ // read receive Buffer length
 						DATA_OUT(receive_buffer_write_pointer - receive_buffer_read_pointer);
@@ -1087,7 +1104,9 @@ void __time_critical_func(emulate_E7_cartridge)(int header_length, bool withPlus
 						out_buffer[out_buffer_write_pointer++] = data_prev;
 					}
 
-			} else if ((addr & 0x0E00) == 0x0800)
+			} else 
+#endif            
+            if ((addr & 0x0E00) == 0x0800)
 				{	// 256 byte RAM access
 					if (addr & 0x0100)
 					{	// 1900-19FF is the read port

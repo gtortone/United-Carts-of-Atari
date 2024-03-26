@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <WiFiEspAT.h>
 #include "global.h"
 #include "hardware/sync.h"
 
@@ -26,35 +27,26 @@ enum Transmission_State{
 
 #if USE_WIFI
 #define setup_plus_rom_functions() \
-		uint8_t receive_buffer_write_pointer = 0, receive_buffer_read_pointer = 0, content_counter = 0; \
-		uint8_t out_buffer_write_pointer = 0, out_buffer_send_pointer = 0; \
-		uint8_t receive_buffer[256], out_buffer[256]; \
-		uint8_t prev_c = 0, prev_prev_c = 0, i, c; \
-		uint16_t content_len; \
-		int content_length_pos = header_length - 5; \
-		enum Transmission_State huart_state = No_Transmission; \
-
+   uint8_t receive_buffer_write_pointer = 0, receive_buffer_read_pointer = 0, content_counter = 0; \
+   uint8_t out_buffer_write_pointer = 0, out_buffer_send_pointer = 0; \
+   uint8_t receive_buffer[256], out_buffer[256]; \
+   uint8_t prev_c = 0, prev_prev_c = 0, i, c; \
+   uint16_t content_len; \
+   int content_length_pos = header_length - 5; \
+   enum Transmission_State uart_state = No_Transmission;
+   extern WiFiClient client;   
 #else //Todo make setup_plus_rom_functions empty if no WiFi
-#define setup_plus_rom_functions() \
-		uint8_t receive_buffer_write_pointer = 0, receive_buffer_read_pointer = 0, content_counter = 0; \
-		uint8_t out_buffer_write_pointer = 0, out_buffer_send_pointer = 0; \
-		uint8_t receive_buffer[256], out_buffer[256]; \
-		uint8_t prev_c = 0, prev_prev_c = 0, i, c; \
-		uint16_t content_len; \
-		int content_length_pos = header_length - 5; \
-		enum Transmission_State huart_state = No_Transmission; \
-
+#define setup_plus_rom_functions() 
 #endif
 
-//FIXME
-#if USE_WIFIxxx
+#if USE_WIFI
 #define process_transmission() \
-        switch(huart_state){ \
+        switch(uart_state){ \
           case Send_Start: { \
-        	content_len = out_buffer_write_pointer; \
-        	content_len++; \
+        	   content_len = out_buffer_write_pointer; \
+        	   content_len++; \
             i = (uint8_t) content_length_pos; \
-            huart_state++; \
+            uart_state = Send_Prepare_Header; \
             break; \
           } \
           case Send_Prepare_Header: { \
@@ -64,24 +56,26 @@ enum Transmission_State{
               content_len = content_len/10; \
             }else{ \
               i = 0; \
-              huart_state++; \
+              uart_state = Send_Header; \
             } \
             break; \
           } \
           case Send_Header: { \
-            if(( huart1.Instance->SR & UART_FLAG_TXE) == UART_FLAG_TXE){ \
-              huart1.Instance->DR = http_request_header[i]; \
+            if(client.available()){ \
+              client.write(http_request_header[i]); \
+              client.flush(); \
               if( ++i == header_length ){ \
-                huart_state++; \
+                uart_state = Send_Content; \
               } \
             } \
             break; \
           } \
           case Send_Content: { \
-            if(( huart1.Instance->SR & UART_FLAG_TXE) == UART_FLAG_TXE){ \
-              huart1.Instance->DR = out_buffer[out_buffer_send_pointer]; \
+            if(client.available()) { \
+              client.write(out_buffer[out_buffer_send_pointer]); \
+              client.flush(); \
               if( out_buffer_send_pointer == out_buffer_write_pointer ){ \
-                huart_state++; \
+                uart_state = Send_Finished; \
               }else{ \
                 out_buffer_send_pointer++; \
               } \
@@ -89,18 +83,16 @@ enum Transmission_State{
             break; \
           } \
           case Send_Finished: { \
-            if(( huart1.Instance->SR & UART_FLAG_TC) == UART_FLAG_TC){ \
-              out_buffer_write_pointer = 0; \
-              out_buffer_send_pointer = 0; \
-              huart_state++; \
-            } \
+            out_buffer_write_pointer = 0; \
+            out_buffer_send_pointer = 0; \
+            uart_state = Receive_Header; \
             break; \
           } \
           case Receive_Header: { \
-            if(( huart1.Instance->SR & UART_FLAG_RXNE) == UART_FLAG_RXNE){ \
-              c = (uint8_t)huart1.Instance->DR; \
+            if(client.available()) { \
+              c = client.read(); \
               if(c == '\n' && c == prev_prev_c){ \
-                huart_state++; \
+                uart_state = Receive_Length; \
               }else{ \
                 prev_prev_c = prev_c; \
                 prev_c = c; \
@@ -109,19 +101,19 @@ enum Transmission_State{
             break; \
           } \
           case Receive_Length: { \
-            if(( huart1.Instance->SR & UART_FLAG_RXNE) == UART_FLAG_RXNE){ \
-              c = (uint8_t)huart1.Instance->DR; \
-              huart_state++; \
+            if(client.available()) { \
+              c = client.read(); \
+              uart_state = Receive_Content; \
               if(c == 0) \
-                huart_state++; \
+                uart_state = Receive_Finished; \
             } \
             break; \
           } \
           case Receive_Content: { \
-            if(( huart1.Instance->SR & UART_FLAG_RXNE) == UART_FLAG_RXNE){ \
-              receive_buffer[receive_buffer_write_pointer++] = (uint8_t)huart1.Instance->DR; \
+            if(client.available()){ \
+              receive_buffer[receive_buffer_write_pointer++] = client.read(); \
               if(++content_counter == c ){ \
-                huart_state++; \
+                uart_state = Receive_Finished; \
               } \
             } \
             break; \
@@ -130,7 +122,7 @@ enum Transmission_State{
             http_request_header[content_length_pos - 1] = ' '; \
             http_request_header[content_length_pos - 2] = ' '; \
             content_counter = 0; \
-            huart_state = No_Transmission; \
+            uart_state = No_Transmission; \
             break; \
           } \
           case No_Transmission: \

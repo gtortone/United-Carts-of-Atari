@@ -1169,7 +1169,9 @@ void emulate_cartridge(CART_TYPE cart_type, MENU_ENTRY *d)
 	if (cart_type.withPlusFunctions == true ){
  		// Read path and hostname in ROM File from where NMI points to till '\0' and
 		// copy to http_request_header
+#if USE_WIFI
 		offset = esp8266_PlusROM_API_connect(cart_size_bytes);
+#endif
 	}
 
 	if (cart_type.base_type == base_type_2K) {
