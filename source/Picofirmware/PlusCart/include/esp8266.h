@@ -55,7 +55,7 @@ uint16_t __in_flash("esp8266_skip_http_response_header") esp8266_skip_http_respo
 uint32_t __in_flash("esp8266_PlusStore_API_range_request") esp8266_PlusStore_API_range_request( char *, http_range, uint8_t *);
 uint32_t __in_flash("esp8266_PlusStore_API_file_request") esp8266_PlusStore_API_file_request( uint8_t *, char *, uint32_t, uint32_t );
 
-//int esp8266_PlusROM_API_connect(unsigned int) __attribute__((section(".flash01")));
+int __in_flash("esp8266_PlusROM_API_connect") esp8266_PlusROM_API_connect(unsigned int);
 
 void __in_flash("empty_rx") empty_rx(void);
 void __in_flash("sendData") sendData(const char *);

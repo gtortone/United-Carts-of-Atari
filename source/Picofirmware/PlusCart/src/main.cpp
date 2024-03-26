@@ -1166,14 +1166,11 @@ void emulate_cartridge(CART_TYPE cart_type, MENU_ENTRY *d)
 {
 	int offset = 0;
 
-//FIXME
-#if USE_WIFIxxx
 	if (cart_type.withPlusFunctions == true ){
  		// Read path and hostname in ROM File from where NMI points to till '\0' and
 		// copy to http_request_header
 		offset = esp8266_PlusROM_API_connect(cart_size_bytes);
 	}
-#endif
 
 	if (cart_type.base_type == base_type_2K) {
 		memcpy(buffer+0x800, buffer, 0x800);

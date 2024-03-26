@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "esp8266.h"
+#include "md5.h"
 #include <SoftwareSerial.h>
 
 WiFiClient client;
@@ -226,45 +227,47 @@ uint32_t esp8266_PlusStore_API_file_request(uint8_t *ext_buffer, char *path, uin
 	return bytes_read;
 }
 
-#if 0
 int esp8266_PlusROM_API_connect(unsigned int size){
+
 	uint16_t * nmi_p = (uint16_t * )&buffer[size - 6];
 	int i = nmi_p[0] - 0x1000;
 	unsigned char device_id_hash[16];
 	int offset = (int)strlen((char *)&buffer[i]) + 1 + i;
 
-	md5( (unsigned char *)stm32_udid, 24, device_id_hash);
+   md5((unsigned char *)pico_uid, 24, device_id_hash);
 
-    esp8266_send_command("AT+CIPCLOSE\r\n", 5000);
+   client.stop();
 
-    http_request_header[0] = '\0';
+   http_request_header[0] = '\0';
 	strcat(http_request_header, (char *)"AT+CIPSTART=\"TCP\",\"");
-    strcat(http_request_header, (char *)&buffer[offset]);
-    strcat(http_request_header, (char *)"\",80,1\r\n");
+   strcat(http_request_header, (char *)&buffer[offset]);
+   strcat(http_request_header, (char *)"\",80,1\r\n");
 
-    esp8266_send_command(http_request_header, PLUSROM_API_CONNECT_TIMEOUT);
+   client.connect((char *)&buffer[offset], 80);
+   dbg("host: %s\r\n", (char *)&buffer[offset]);
+   dbg("page: %s\r\n", (char *)&buffer[i]);
 
-	http_request_header[0] = '\0';
-	strcat(http_request_header, (char *)"POST /");
-    strcat(http_request_header, (char *)&buffer[i]);
-    strcat(http_request_header, (char *)" HTTP/1.0\r\nHost: ");
-    strcat(http_request_header, (char *)&buffer[offset]);
-    strcat(http_request_header, (char *)"\r\nConnection: keep-alive\r\n"
+   http_request_header[0] = '\0';
+   strcat(http_request_header, (char *)"POST /");
+   strcat(http_request_header, (char *)&buffer[i]);
+   strcat(http_request_header, (char *)" HTTP/1.0\r\nHost: ");
+   strcat(http_request_header, (char *)&buffer[offset]);
+   strcat(http_request_header, (char *)"\r\nConnection: keep-alive\r\n"
                                         "Content-Type: application/octet-stream\r\n"
                                         "PlusROM-Info: agent=PlusCart;ver=" VERSION ";id=");
 
-    char *ptr = &http_request_header[strlen(http_request_header)];
-    for (i = 0; i < 16; i++) {
+   char *ptr = &http_request_header[strlen(http_request_header)];
+   for (i = 0; i < 16; i++)
         ptr += sprintf(ptr, "%02X", device_id_hash[i]);
-    }
 
-    strcat(http_request_header, (char *)";nick=\r\nContent-Length:    \r\n\r\n");
-    offset = (int)strlen(http_request_header);
+   strcat(http_request_header, (char *)";nick=\r\nContent-Length:    \r\n\r\n");
+   offset = (int)strlen(http_request_header);
 
-    esp8266_send_command(API_ATCMD_2, 5000);
-    return offset;
+   client.write(http_request_header, strlen(http_request_header));
+   client.flush();  
+
+   return offset;
 }
-#endif
 
 uint16_t esp8266_skip_http_response_header(WiFiClient *wcl) {
 
