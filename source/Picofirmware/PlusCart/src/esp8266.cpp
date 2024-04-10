@@ -410,14 +410,13 @@ bool esp8266_wps_connect(){
    uint t = 0, timeout = 10000;             // 10 sec
    uint interval = timeout / 10;
 
+   sendCommandGetResponse("AT+CWMODE=1\r\n");
    sendCommandGetResponse("AT+WPS=1\r\n");
 
    while( !esp8266_is_connected() && t < timeout ) {
       t += interval;
       sleep_ms(interval);
    }
-
-   sendCommandGetResponse("AT+WPS=0\r\n");
 
    // flush rx buffer
    empty_rx();

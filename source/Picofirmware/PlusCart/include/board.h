@@ -20,8 +20,9 @@ extern char pico_uid[];
 
 // UART debug pins      :     GP20 (RX), GP21 (TX)
 #if DBG_SERIAL
-      #define DBG_SERIAL_RX   20
-      #define DBG_SERIAL_TX   21
+      #define DBG_UART_RX   20
+      #define DBG_UART_TX   21
+      #define DBG_UART_BAUDRATE   115200
       extern SoftwareSerial dbgSerial;
       #define dbg dbgSerial.printf
 #endif
@@ -38,8 +39,9 @@ extern char pico_uid[];
 // ESP UART pins        :     GP0 (TX), GP1 (RX), GP15 (RST)
 #if USE_WIFI
    #define espSerial Serial1
-   #define ESP_SERIAL_TX      0
-   #define ESP_SERIAL_RX      1
+   #define ESP_UART_TX        0
+   #define ESP_UART_RX        1
+   #define ESP_UART_BAUDRATE 115200
    #define ESP_RESET_PIN     15
 #endif
 

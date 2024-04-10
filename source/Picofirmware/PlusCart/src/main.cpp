@@ -1122,15 +1122,15 @@ void system_secondary_init(void){
    if(!init) {
 
 #if DBG_SERIAL
-     dbgSerial.begin(115200);
+     dbgSerial.begin(DBG_UART_BAUDRATE);
 #endif
 
      Serial.begin(115200);
 
 #if USE_WIFI
      espSerial.setFIFOSize(WIFIESPAT_CLIENT_RX_BUFFER_SIZE);
-     espSerial.begin(921600, SERIAL_8N1);
-     WiFi.init(espSerial,ESP_RESET_PIN);
+     espSerial.begin(ESP_UART_BAUDRATE, SERIAL_8N1);
+     WiFi.init(espSerial, ESP_RESET_PIN);
 #endif
 
      LittleFSConfig cfg;
