@@ -9,6 +9,7 @@
  * Cartridge Emulation
  *************************************************************************/
 #include <string.h>
+#include "cartridge_detection.h"
 #include "cartridge_emulation.h"
 #include "cartridge_firmware.h"
 
@@ -20,6 +21,14 @@
 		if (cart_size_bytes > 0x010000) return; \
 		uint8_t* cart_rom = buffer; \
 		uint8_t* cart_ram = buffer + cart_size_bytes + (((~cart_size_bytes & 0x03) + 1) & 0x03);
+
+queue_t __not_in_flash() qprocs;
+queue_t __not_in_flash() qargs;
+
+// multicore sync
+const uint8_t emuexit = EMU_EXITED;
+const uint8_t sendstart = EMU_PLUSROM_SENDSTART;
+const uint8_t recvdone = EMU_PLUSROM_RECVDONE;
 
 void exit_cartridge(uint16_t addr, uint16_t addr_prev) {
 
@@ -42,110 +51,139 @@ void exit_cartridge(uint16_t addr, uint16_t addr_prev) {
  * SC variants have 128 bytes of RAM:
  * RAM read port is $1080 - $10FF, write port is $1000 - $107F.
  */
-void __time_critical_func(emulate_standard_cartridge)(int header_length, bool withPlusFunctions, uint16_t lowBS, uint16_t highBS, int isSC) {
+
+// multicore wrapper
+void _emulate_standard_cartridge(void) {
+   uint32_t addr;
+   queue_remove_blocking(&qargs, &addr);
+   CART_TYPE *cart_type = (CART_TYPE *) (addr);
+   emulate_standard_cartridge(cart_type);
+   queue_add_blocking(&qprocs, &emuexit);
+}
+
+void __time_critical_func(emulate_standard_cartridge)(CART_TYPE *cart_type) {
 
 	setup_cartridge_image_with_ram();
 
+   uint16_t lowBS, highBS;
 	uint16_t addr, addr_prev = 0;
 	uint8_t data = 0, data_prev = 0;
 	unsigned char *bankPtr = &cart_rom[0];
 	bool joy_status = false;
 
-	setup_plus_rom_functions();
+   if(cart_type->base_type == base_type_2K || cart_type->base_type ==  base_type_4K) {
+      lowBS = 0x2000;
+      highBS = 0x0000;
+   } else if(cart_type->base_type == base_type_F8) {
+      lowBS = 0x1FF8;
+      highBS = 0x1FF9;
+   } else if(cart_type->base_type == base_type_F6) {
+      lowBS = 0x1FF6;
+      highBS = 0x1FF9;
+   } else if(cart_type->base_type == base_type_F4) {
+      lowBS = 0x1FF4;
+      highBS = 0x1FFB;
+   } else if(cart_type->base_type == base_type_EF) {
+      lowBS = 0x1FE0;
+      highBS = 0x1FEF;
+   }
 
 	if (!reboot_into_cartridge()) return;
+
    uint32_t irqstatus = save_and_disable_interrupts();
 
-	while (1)
-	{
+	while (1) {
+
 		while ((addr = ADDR_IN) != addr_prev)
 			addr_prev = addr;
+      
 		// got a stable address
 		if (addr & 0x1000) { // A12 high
+
 #if USE_WIFI
-			if(withPlusFunctions && addr > 0x1fef && addr < 0x1ff4) {
-				if(addr == 0x1ff2 ) { // read from receive buffer
+			if(cart_type->withPlusFunctions && addr > 0x1fef && addr < 0x1ff4) {
+				if(addr == 0x1ff2 ) {// read from receive buffer
 					DATA_OUT(receive_buffer[receive_buffer_read_pointer]);
 					SET_DATA_MODE_OUT
 					// if there is more data on the receive_buffer
-					if(receive_buffer_read_pointer != receive_buffer_write_pointer )
+					if(receive_buffer_read_pointer != receive_buffer_write_pointer)
 						receive_buffer_read_pointer++;
 					// wait for address bus to change
-					while (ADDR_IN == addr)
-                  ;
+					while (ADDR_IN == addr) {}
 					SET_DATA_MODE_IN
 				} else if(addr == 0x1ff1) { // write to send Buffer and start Request !!
 					while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
-					if(uart_state == No_Transmission)
+					if(uart_state == No_Transmission) {
 						uart_state = Send_Start;
+                  queue_try_add(&qprocs, &sendstart);
+               }
 					out_buffer[out_buffer_write_pointer] = data_prev;
 				} else if(addr == 0x1ff3) { // read receive Buffer length
 					DATA_OUT(receive_buffer_write_pointer - receive_buffer_read_pointer);
 					SET_DATA_MODE_OUT
 					// wait for address bus to change
-					while (ADDR_IN == addr){}
+					while (ADDR_IN == addr) {}
 					SET_DATA_MODE_IN
 				} else { // if(addr == 0x1ff0) // write to send Buffer
-					while (ADDR_IN == addr) { 
-                  data_prev = data; data = DATA_IN;
-               }
+					while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
 					out_buffer[out_buffer_write_pointer++] = data_prev;
 				}
 			} else {
 #endif
 				if (addr >= lowBS && addr <= highBS)	// bank-switch
 					bankPtr = &cart_rom[(addr-lowBS)*4*1024];
-				if (isSC && (addr & 0x1F00) == 0x1000)
-				{	// SC RAM access
-					if (addr & 0x0080)
-					{	// a read from cartridge ram
+
+				if (cart_type->withSuperChip && (addr & 0x1F00) == 0x1000) {	// SC RAM access
+					if (addr & 0x0080) {	// a read from cartridge ram
 						DATA_OUT(cart_ram[addr&0x7F]);
 						SET_DATA_MODE_OUT
 						// wait for address bus to change
 						while (ADDR_IN == addr) ;
 						SET_DATA_MODE_IN
-					}
-					else
-					{	// a write to cartridge ram
+					} else {	// a write to cartridge ram
 						// read last data on the bus before the address lines change
 						while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
 						cart_ram[addr&0x7F] = data_prev;
 					}
-				}
-				else 
-				{	// normal rom access
+				} else {	// normal rom access
 					DATA_OUT(bankPtr[addr&0xFFF]);
 					SET_DATA_MODE_OUT
 					// wait for address bus to change
-					while (ADDR_IN == addr) { process_transmission(); }
+					while (ADDR_IN == addr){ }
 					SET_DATA_MODE_IN
 				}
 #if USE_WIFI
 			}
-#endif 
+#endif
 		} else {
-			if(addr == EXIT_SWCHB_ADDR){
+			if(addr == EXIT_SWCHB_ADDR) {
 				while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
 				if( !(data_prev & 0x1) && joy_status)
 					break;
-			}else if(addr == SWCHA){
+			} else if(addr == SWCHA) {
 				while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
 				joy_status = !(data_prev & 0x80);
-			}else if(withPlusFunctions){
-				while (ADDR_IN == addr) {
-					process_transmission();
-				}
+			} else if(cart_type->withPlusFunctions) {
+				while (ADDR_IN == addr) { }
 			}
 		}
-	}
+	}  // end while
 
    restore_interrupts(irqstatus);
+
 	exit_cartridge(addr, addr_prev);
 }
 /* UA
  *
  *
  */
+
+// multicore wrapper
+void _emulate_UA_cartridge(void) {
+   emulate_UA_cartridge();
+   queue_add_blocking(&qprocs, &emuexit);
+}
+
 void __time_critical_func(emulate_UA_cartridge)(void)
 {
 	setup_cartridge_image();
@@ -200,7 +238,17 @@ void __time_critical_func(emulate_UA_cartridge)(void)
  * plus 256 bytes of RAM:
  * RAM read port is $1100 - $11FF, write port is $1000 - $10FF.
  */
-void __time_critical_func(emulate_FA_cartridge)(int header_length, bool withPlusFunctions)
+
+// multicore wrapper
+void _emulate_FA_cartridge(void) {
+   uint32_t addr;
+   queue_remove_blocking(&qargs, &addr);
+   CART_TYPE *cart_type = (CART_TYPE *) (addr);
+   emulate_FA_cartridge((CART_TYPE *) cart_type);
+   queue_add_blocking(&qprocs, &emuexit);
+}
+
+void __time_critical_func(emulate_FA_cartridge)(CART_TYPE *cart_type)
 {
 	setup_cartridge_image_with_ram();
 
@@ -208,8 +256,6 @@ void __time_critical_func(emulate_FA_cartridge)(int header_length, bool withPlus
 	uint8_t data = 0, data_prev = 0;
 	unsigned char *bankPtr = &cart_rom[0];
 	bool joy_status = false;
-
-	setup_plus_rom_functions();
 
 	if (!reboot_into_cartridge()) return;
    uint32_t irqstatus = save_and_disable_interrupts();
@@ -222,7 +268,7 @@ void __time_critical_func(emulate_FA_cartridge)(int header_length, bool withPlus
 		if (addr & 0x1000)
 		{ // A12 high
 #if USE_WIFI
-			if(withPlusFunctions && addr > 0x1fef && addr < 0x1ff4){
+			if(cart_type->withPlusFunctions && addr > 0x1fef && addr < 0x1ff4){
 				if(addr == 0x1ff2 ){// read from receive buffer
 					DATA_OUT(receive_buffer[receive_buffer_read_pointer]);
 					SET_DATA_MODE_OUT
@@ -271,7 +317,7 @@ void __time_critical_func(emulate_FA_cartridge)(int header_length, bool withPlus
 					DATA_OUT(bankPtr[addr&0xFFF]);
 					SET_DATA_MODE_OUT
 					// wait for address bus to change
-					while (ADDR_IN == addr){ process_transmission(); }
+					while (ADDR_IN == addr){ }
 					SET_DATA_MODE_IN
 				}
 #if USE_WIFI
@@ -285,8 +331,8 @@ void __time_critical_func(emulate_FA_cartridge)(int header_length, bool withPlus
 			}else if(addr == SWCHA){
 				while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
 				joy_status = !(data_prev & 0x80);
-			}else if(withPlusFunctions){
-				while (ADDR_IN == addr) { process_transmission(); }
+			}else if(cart_type->withPlusFunctions){
+				while (ADDR_IN == addr) { }
 			}
 		}
 	}
@@ -352,6 +398,13 @@ void __time_critical_func(emulate_FA_cartridge)(int header_length, bool withPlus
   @author  Stephen Anthony; with ideas/research from Christian Speckner and
 		   alex_79 and TomSon (of AtariAge)
  */
+
+// multicore wrapper
+void _emulate_FE_cartridge(void) {
+   emulate_FE_cartridge();
+   queue_add_blocking(&qprocs, &emuexit);
+}
+
 void __time_critical_func(emulate_FE_cartridge)(void)
 {
 	setup_cartridge_image();
@@ -427,6 +480,13 @@ void __time_critical_func(emulate_FE_cartridge)(void)
  * http://atariage.com/forums/topic/266245-tigervision-banking-and-low-memory-reads/
  * http://atariage.com/forums/topic/68544-3f-bankswitching/
  */
+
+// multicore wrapper
+void _emulate_3F_cartridge(void) {
+   emulate_3F_cartridge();
+   queue_add_blocking(&qprocs, &emuexit);
+}
+
 void __time_critical_func(emulate_3F_cartridge)(void)
 {
 	setup_cartridge_image();
@@ -537,7 +597,17 @@ Writing to 3E, however, is what's new.  Writing here selects a 1K RAM bank into
 enough space for 256K of RAM.  When RAM is selected, 1000-13FF is the read port while
 1400-17FF is the write port.
  */
-void __time_critical_func(emulate_3E_cartridge)(int header_length, bool withPlusFunctions)
+
+// multicore wrapper
+void _emulate_3E_cartridge(void) {
+   uint32_t addr;
+   queue_remove_blocking(&qargs, &addr);
+   CART_TYPE *cart_type = (CART_TYPE *) (addr);
+   emulate_3E_cartridge((CART_TYPE *) cart_type);
+   queue_add_blocking(&qprocs, &emuexit);
+}
+
+void __time_critical_func(emulate_3E_cartridge)(CART_TYPE *cart_type)
 {
 	setup_cartridge_image_with_ram();
 
@@ -549,8 +619,6 @@ void __time_critical_func(emulate_3E_cartridge)(int header_length, bool withPlus
 	unsigned char *fixedPtr = &cart_rom[(cartROMPages-1)*2048];
 	int bankIsRAM = 0;
 	bool joy_status = false;
-
-	setup_plus_rom_functions();
 
 	if (!reboot_into_cartridge()) return;
    uint32_t irqstatus = save_and_disable_interrupts();
@@ -566,7 +634,7 @@ void __time_critical_func(emulate_3E_cartridge)(int header_length, bool withPlus
 		if (addr & 0x1000)
 		{ // A12 high
 #if USE_WIFI
-			if(withPlusFunctions && addr > 0x1fef && addr < 0x1ff4){
+			if(cart_type->withPlusFunctions && addr > 0x1fef && addr < 0x1ff4){
 				if(addr == 0x1ff2 ){// read from receive buffer
 					DATA_OUT(receive_buffer[receive_buffer_read_pointer]);
 					SET_DATA_MODE_OUT
@@ -614,7 +682,7 @@ void __time_critical_func(emulate_3E_cartridge)(int header_length, bool withPlus
 					DATA_OUT(data);
 					SET_DATA_MODE_OUT
 					// wait for address bus to change
-					while (ADDR_IN == addr){process_transmission();}
+					while (ADDR_IN == addr){ }
 					SET_DATA_MODE_IN
 				}
 #if USE_WIFI
@@ -640,9 +708,8 @@ void __time_critical_func(emulate_3E_cartridge)(int header_length, bool withPlus
 			}else if(addr == SWCHA){
 				while (ADDR_IN == addr) { data_prev = data; data = DATA_IN;}
 				joy_status = !(data_prev & 0x80);
-			}else if(withPlusFunctions){
+			}else if(cart_type->withPlusFunctions){
 				while (ADDR_IN == addr) {
-					process_transmission();
 				}
 			}
 		}
@@ -662,7 +729,17 @@ void __time_critical_func(emulate_3E_cartridge)(int header_length, bool withPlus
  *   - read $x800, write $xa00
  *   - read $xc00, write $xe00
  */
-void __time_critical_func(emulate_3EPlus_cartridge)(int header_length, bool withPlusFunctions)
+
+// multicore wrapper
+void _emulate_3EPlus_cartridge(void) {
+   uint32_t addr;
+   queue_remove_blocking(&qargs, &addr);
+   CART_TYPE *cart_type = (CART_TYPE *) (addr);
+   emulate_3EPlus_cartridge((CART_TYPE *) cart_type);
+   queue_add_blocking(&qprocs, &emuexit);
+}
+
+void __time_critical_func(emulate_3EPlus_cartridge)(CART_TYPE *cart_type)
 {
 	if (cart_size_bytes > 0x010000) return;
 
@@ -677,8 +754,6 @@ void __time_critical_func(emulate_3EPlus_cartridge)(int header_length, bool with
 	unsigned char *bankPtr[4] = { &cart_rom[0], &cart_rom[0], &cart_rom[0], &cart_rom[0] };
 	bool joy_status = false;
 
-	setup_plus_rom_functions();
-
 	if (!reboot_into_cartridge()) return;
    uint32_t irqstatus = save_and_disable_interrupts();
 
@@ -691,7 +766,7 @@ void __time_critical_func(emulate_3EPlus_cartridge)(int header_length, bool with
 		if (addr & 0x1000)
 		{ // A12 high
 #if USE_WIFI
-			if(withPlusFunctions && addr > 0x1fef && addr < 0x1ff4){
+			if(cart_type->withPlusFunctions && addr > 0x1fef && addr < 0x1ff4){
 				if(addr == 0x1ff2 ){// read from receive buffer
 					DATA_OUT(receive_buffer[receive_buffer_read_pointer]);
 					SET_DATA_MODE_OUT
@@ -735,7 +810,7 @@ void __time_critical_func(emulate_3EPlus_cartridge)(int header_length, bool with
 
 					SET_DATA_MODE_OUT
 					// wait for address bus to change
-					while (ADDR_IN == addr){process_transmission();}
+					while (ADDR_IN == addr){ }
 					SET_DATA_MODE_IN
 				}
 
@@ -761,8 +836,8 @@ void __time_critical_func(emulate_3EPlus_cartridge)(int header_length, bool with
 			}else if(addr == SWCHA){
 				while (ADDR_IN == addr) { data_prev = data; data = DATA_IN;}
 				joy_status = !(data_prev & 0x80);
-			}else if(withPlusFunctions){
-				while (ADDR_IN == addr){process_transmission();}
+			}else if(cart_type->withPlusFunctions){
+				while (ADDR_IN == addr){ }
 			}
 		}
 	}
@@ -791,6 +866,13 @@ into the following locations:
 
 Like F8, F6, etc. accessing one of the locations indicated will perform the switch.
  */
+
+// multicore wrapper
+void _emulate_E0_cartridge(void) {
+   emulate_E0_cartridge();
+   queue_add_blocking(&qprocs, &emuexit);
+}
+
 void __time_critical_func(emulate_E0_cartridge(void))
 {
 	setup_cartridge_image();
@@ -857,6 +939,13 @@ void __time_critical_func(emulate_E0_cartridge(void))
  * If address AND $1840 == $0800, then we select bank 0
  * If address AND $1840 == $0840, then we select bank 1
  */
+
+// multicore wrapper
+void _emulate_0840_cartridge(void) {
+   emulate_0840_cartridge();
+   queue_add_blocking(&qprocs, &emuexit);
+}
+
 void __time_critical_func(emulate_0840_cartridge)(void)
 {
 	setup_cartridge_image();
@@ -910,6 +999,13 @@ void __time_critical_func(emulate_0840_cartridge)(void)
  *  $F400-$F7FF 1K RAM write
  *  $F800-$FFFF 2K ROM
  */
+
+// multicore wrapper
+void _emulate_CV_cartridge(void) {
+   emulate_CV_cartridge();
+   queue_add_blocking(&qprocs, &emuexit);
+}
+
 void __time_critical_func(emulate_CV_cartridge)(void)
 {
 	setup_cartridge_image_with_ram();
@@ -976,6 +1072,13 @@ void __time_critical_func(emulate_CV_cartridge)(void)
  * 64K cartridge with 16 x 4K banks. An access to $1FF0 switches to the next
  * bank in sequence.
  */
+
+// multicore wrapper
+void _emulate_F0_cartridge(void) {
+   emulate_F0_cartridge();
+   queue_add_blocking(&qprocs, &emuexit);
+}
+
 void __time_critical_func(emulate_F0_cartridge)(void)
 {
 	setup_cartridge_image();
@@ -1050,7 +1153,17 @@ Accessing 1FE8 through 1FEB select which 256 byte bank shows up.
 2022-12-23 PlusROM extensions available at standard PlusROM addresses 0x1FF0-0x1FF4 
 
  */
-void __time_critical_func(emulate_E7_cartridge)(int header_length, bool withPlusFunctions)
+
+// multicore wrapper
+void _emulate_E7_cartridge(void) {
+   uint32_t addr;
+   queue_remove_blocking(&qargs, &addr);
+   CART_TYPE *cart_type = (CART_TYPE *) (addr);
+   emulate_E7_cartridge((CART_TYPE *) cart_type);
+   queue_add_blocking(&qprocs, &emuexit);
+}
+
+void __time_critical_func(emulate_E7_cartridge)(CART_TYPE *cart_type)
 {
 	setup_cartridge_image_with_ram();
 
@@ -1062,8 +1175,6 @@ void __time_critical_func(emulate_E7_cartridge)(int header_length, bool withPlus
 	unsigned char *ram2Ptr = &cart_ram[1024];
 	int ram_mode = 0;
 	bool joy_status = false;
-
-	setup_plus_rom_functions();
 
 	if (!reboot_into_cartridge()) return;
    uint32_t irqstatus = save_and_disable_interrupts();
@@ -1078,7 +1189,7 @@ void __time_critical_func(emulate_E7_cartridge)(int header_length, bool withPlus
 			if (addr & 0x0800)
 			{	// higher 2k cartridge ROM area
 #if USE_WIFI
-				if(withPlusFunctions && addr > 0x1fef && addr < 0x1ff4){
+				if(cart_type->withPlusFunctions && addr > 0x1fef && addr < 0x1ff4){
 					if(addr == 0x1ff2 ){// read from receive buffer
 						DATA_OUT(receive_buffer[receive_buffer_read_pointer]);
 						SET_DATA_MODE_OUT
@@ -1140,7 +1251,7 @@ void __time_critical_func(emulate_E7_cartridge)(int header_length, bool withPlus
 					DATA_OUT(fixedPtr[addr&0x7FF]);
 					SET_DATA_MODE_OUT
 					// wait for address bus to change
-					while (ADDR_IN == addr){process_transmission();}
+					while (ADDR_IN == addr){ }
 					SET_DATA_MODE_IN
 				}
 			}
@@ -1167,7 +1278,7 @@ void __time_critical_func(emulate_E7_cartridge)(int header_length, bool withPlus
 					DATA_OUT(bankPtr[addr&0x7FF]);
 					SET_DATA_MODE_OUT
 					// wait for address bus to change
-					while (ADDR_IN == addr){process_transmission();}
+					while (ADDR_IN == addr){ }
 					SET_DATA_MODE_IN
 				}
 			}
@@ -1179,8 +1290,8 @@ void __time_critical_func(emulate_E7_cartridge)(int header_length, bool withPlus
 			}else if(addr == SWCHA){
 				while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
 				joy_status = !(data_prev & 0x80);
-			} else if(withPlusFunctions){
-				while (ADDR_IN == addr){process_transmission();}
+			} else if(cart_type->withPlusFunctions){
+				while (ADDR_IN == addr){ }
 			}
 		}
 	}
@@ -1204,6 +1315,12 @@ void __time_critical_func(emulate_E7_cartridge)(int header_length, bool withPlus
  * using eram here should not be a problem, as long as we don't exit emulation and return to Cart menu.
  *
  */
+
+// multicore wrapper
+void _emulate_DPC_cartridge(void) {
+   emulate_DPC_cartridge(cart_size_bytes);
+   queue_add_blocking(&qprocs, &emuexit);
+}
 
 // 47 us = 21 kHz
 #define UPDATE_MUSIC_COUNTER { \
@@ -1539,6 +1656,12 @@ static void switchLayout(uint8_t** segments, uint8_t index) {
 	default:
 		break;
 	}
+}
+
+// multicore wrapper
+void _emulate_pp_cartridge(void) {
+   emulate_pp_cartridge(buffer + 8*1024);
+   queue_add_blocking(&qprocs, &emuexit);
 }
 
 void __time_critical_func(emulate_pp_cartridge)(uint8_t* ram) {

@@ -4,7 +4,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "global.h"
+#include "menu.h"
+#include "cartridge_detection.h"
 
 typedef struct {
     uint8_t* banks[64];

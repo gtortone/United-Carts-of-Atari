@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 #include "global.h"
+#include "menu.h"
+#include "board.h"
 #include "FatFsSd.h"
 #include "ffconf.h"
 
@@ -13,17 +15,17 @@ enum sd_card_stat{
 
 static spi_t spi = {
     .hw_inst = spi0,  // RP2040 SPI component
-    .miso_gpio = 0,
-    .mosi_gpio = 3,
-    .sck_gpio = 2,
+    .miso_gpio = SD_MISO,
+    .mosi_gpio = SD_MOSI,
+    .sck_gpio = SD_SCK,
     // 2 MHz OK
-    .baud_rate = 2 * 1000 * 1000,
+    .baud_rate = SD_SPEED,
     .no_miso_gpio_pull_up = true
 };
 
 static sd_spi_if_t spi_if = {
     .spi = &spi,  // Pointer to the SPI driving this card
-    .ss_gpio = 1      // The SPI slave select GPIO for this SD card
+    .ss_gpio = SD_CS      // The SPI slave select GPIO for this SD card
 } ;
 
 // Hardware Configuration of the SD Card "objects"
@@ -31,7 +33,6 @@ static sd_card_t sd_card = {
     .type = SD_IF_SPI,
     .spi_if_p = &spi_if,  // Pointer to the SPI interface driving this card
     .use_card_detect = false,
-
 };
 
 bool is_text_file(char *);

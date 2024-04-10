@@ -646,7 +646,7 @@ void vcsPla4Ex(uint8_t data)
 	// d7,d6 are not driven by cart, because they're driven by TIA
    //FIXME
 	//*DATA_ODR = data;
-	SET_DATA_MODE(0x0555)
+	//SET_DATA_MODE(0x0555)
 }
 
 __attribute__((long_call, section(".time_critical.")))
@@ -658,7 +658,7 @@ void vcsPlp4Ex(uint8_t data)
 	// d7,d6 are not driven by cart, because they're driven by TIA
    //FIXME
 	//*DATA_ODR = data;
-	SET_DATA_MODE(0x0555)
+	//SET_DATA_MODE(0x0555)
 }
 
 

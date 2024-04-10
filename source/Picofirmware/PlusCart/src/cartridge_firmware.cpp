@@ -15,6 +15,7 @@
 #endif
 
 #include "font.h"
+#include "user_settings.h"
 
 #define lineCounter 0x82
 #define lineBackColour 0x84
@@ -588,7 +589,7 @@ void createMenuForAtari(
 			menu_header[i--] = (char)((max_page % 10) + '0');
 			max_page = max_page / 10;
 		}
-		menu_header[i--] = PATH_SEPERATOR;
+		menu_header[i--] = PATH_SEPARATOR;
 
 		page_id++;
 		while (page_id != 0) {

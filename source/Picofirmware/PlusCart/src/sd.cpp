@@ -2,7 +2,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include "global.h"
+#include "menu.h"
 #include "cartridge_firmware.h"
+#include "user_settings.h"
 
 #if USE_WIFI
    #include "esp8266.h"
@@ -33,7 +35,7 @@ bool is_text_file(char * filename){
 int find_last_path_seperator(const char * path){
     int i = (int)strlen(path) - 1;
     for (; i >= 0 ; i--){
-        if (path[i] == PATH_SEPERATOR) break;
+        if (path[i] == PATH_SEPARATOR) break;
    }
     return i;
 }
@@ -198,7 +200,7 @@ uint32_t sd_card_file_request(uint8_t *ext_buffer, char *path, uint32_t start_po
    if (f_mount(&FatFs, "", 1) == FR_OK){
       if(strstr(path, MENU_TEXT_SD_CARD_CONTENT) == path){
          sd_file = &path[sizeof(MENU_TEXT_SD_CARD_CONTENT)];
-      }else if(strstr(path, MENU_TEXT_SEARCH_FOR_ROM) == path){
+      }else if(strstr(path, MENU_TEXT_SEARCH_FOR_SD_ROM) == path){
          if(open_system_file(&fil, "Search", (FA_OPEN_EXISTING | FA_READ) ) == FR_OK){
             char filename[33];
             basename(path, filename);

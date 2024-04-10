@@ -1,5 +1,6 @@
 #include <WiFiEspAT.h>
 #include "global.h"
+#include "menu.h"
 
 #ifndef ESP8266_H
 #define ESP8266_H
@@ -29,7 +30,8 @@
 #define FAIL      3
 #define TIMEOUT   255
 
-extern char esp8266_at_version[15];
+extern char esp8266_at_version[];
+extern char http_request_header[];
 
 typedef struct {
 	uint32_t start;

@@ -29,7 +29,6 @@
   */
 
 #include <Arduino.h>
-#include "main.h"
 
 #include "global.h"
 
@@ -38,11 +37,10 @@
 #include <ctype.h>
 #include <string.h>
 
+#include "board.h"
+#include "atari_menu.h"
 #include "font.h"
-
-#if DBG_SERIAL
-   SoftwareSerial dbgSerial(DBG_SERIAL_RX, DBG_SERIAL_TX); // RX, TX
-#endif
+#include "user_settings.h"
 
 #if USE_WIFI
    #include "esp8266.h"
@@ -53,143 +51,34 @@
    #include "sd.h"
 #endif
 
-#include "pico/unique_id.h"
+#include "pico/platform.h"
+#include "pico/util/queue.h"
 #include "flash.h"
 
+#include "plusrom.h"
 #include "cartridge_io.h"
+#include "cartridge_detection.h"
 #include "cartridge_firmware.h"
 //#include "cartridge_emulation_ACE.h"
 #include "cartridge_emulation_ar.h"
 #include "cartridge_emulation_ELF.h"
-#include "cartridge_detection.h"
 #include "cartridge_emulation.h"
 #include "cartridge_emulation_df.h"
 #include "cartridge_emulation_bf.h"
 #include "cartridge_emulation_sb.h"
-//#include "cartridge_emulation_dpcp.h"
 
 void truncate_curPath(void);
 
-typedef struct {
-	enum cart_base_type base_type;
-	bool withSuperChip;
-	bool withPlusFunctions;
-	bool uses_ccmram;
-	bool uses_systick;
-	uint32_t flash_part_address;
-} CART_TYPE;
-
-typedef struct {
-	const char *ext;
-	CART_TYPE cart_type;
-} EXT_TO_CART_TYPE_MAP;
-
-const __in_flash("ext_to_cart_type_map") EXT_TO_CART_TYPE_MAP ext_to_cart_type_map[] = {
-	{"ROM",  { base_type_None,    false, false, false, false }},
-	{"BIN",  { base_type_None,    false, false, false, false }},
-	{"A26",  { base_type_None,    false, false, false, false }},
-	{"2K",   { base_type_2K,      false, false, false, false }},
-	{"4K",   { base_type_4K,      false, false, false, false }},
-	{"4KS",  { base_type_4K,      true,  false, false, false }},
-	{"F8",   { base_type_F8,      false, false, false, false }},
-	{"F6",   { base_type_F6,      false, false, false, false }},
-	{"F4",   { base_type_F4,      false, false, false, false }},
-	{"F8S",  { base_type_F8,      true,  false, false, false }},
-	{"F6S",  { base_type_F6,      true,  false, false, false }},
-	{"F4S",  { base_type_F4,      true,  false, false, false }},
-	{"FE",   { base_type_FE,      false, false, false, false }},
-	{"3F",   { base_type_3F,      false, false, false, false }},
-	{"3E",   { base_type_3E,      false, false, false, false }},
-	{"E0",   { base_type_E0,      false, false, false, false }},
-	{"084",  { base_type_0840,    false, false, false, false }},
-	{"CV",   { base_type_CV,      false, false, false, false }},
-	{"EF",   { base_type_EF,      false, false, false, false }},
-	{"EFS",  { base_type_EF,      true,  false, false, false }},
-	{"F0",   { base_type_F0,      false, false, false, false }},
-	{"FA",   { base_type_FA,      false, false, false, false }},
-	{"E7",   { base_type_E7,      false, false, false, false }},
-	{"DPC",  { base_type_DPC,     false, false, true,  true  }},
-	{"AR",   { base_type_AR,      false, false, false, false }},
-	{"BF",   { base_type_BF,      false, false, true,  false }},
-	{"BFS",  { base_type_BFSC,    false, false, true,  false }},
-	{"ACE",  { base_type_ACE,     false, false, false, false }},
-	{"WD",   { base_type_PP,      false, false, false, false }},
-	{"DF",   { base_type_DF,      false, false, true,  false }},
-	{"DFS",  { base_type_DFSC,    false, false, true,  false }},
-	{"3EP",  { base_type_3EPlus,  false, false, false, false }},
-	{"DPCP", { base_type_DPCplus, false, false, false, true  }},
-	{"SB",   { base_type_SB,      false, false, true,  false }},
-	{"UA",   { base_type_UA,      false, false, false, false }},
-	{"ELF",  { base_type_ELF,     false, false, false, false }},
-
-	{0,{base_type_None,0,0}}
-};
-
-const char __in_flash("status_message") *status_message[] = {
-
-#if MENU_TYPE == UNOCART
-	"UnoCart 2600",
-#else
-	"PlusCart(+)",
-#endif
-	"Select WiFi Network",
-	"No WiFi",
-	"WiFi connected",
-	"Request timeout",
-	"Enter WiFi Password",
-	"Enter email or username",
-	"Your Chat Message",
-	"Offline ROMs erased",
-	"ROM file too big!",
-	"ACE file unsupported",
-	"Unknown/invalid ROM",
-	"Done",
-	"Failed",
-	"Firmware download failed",
-	"Offline ROMs detected",
-	"No offline ROMs detected",
-	"DPC+ is not supported",
-	"Emulation exited",
-	"ROM Download Failed",
-
-	"Setup",
-	"Select TV Mode",
-	"Select Font",
-	"Select Line Spacing",
-	"Setup/System Info",
-	MENU_TEXT_SEARCH_FOR_ROM,
-	"Enter search details",
-	"Search results",
-
-//	MENU_TEXT_APPEARANCE,
-};
-
-const uint8_t numMenuItemsPerPage[] = {
-		// ref: SPACING enum
-		14,									// dense
-		12,									// medium
-		10									// sparse
-};
-
 /* Private variables ---------------------------------------------------------*/
+
 int num_menu_entries = 0;
-char http_request_header[512];
+MENU_ENTRY menu_entries[NUM_MENU_ITEMS];
 
-char pico_uid[2 * PICO_UNIQUE_BOARD_ID_SIZE_BYTES + 1];
-
-uint8_t __not_in_flash() buffer[BUFFER_SIZE * 1024];       // 96 * 1024 bytes
-unsigned int cart_size_bytes;
-
-USER_SETTINGS user_settings = { TV_MODE_PAL, FONT_DEFAULT, SPACING_DEFAULT };
-
+int inputActive;
 char curPath[256];
 char input_field[STATUS_MESSAGE_LENGTH];
 
-int inputActive;
-
 uint8_t plus_store_status[1];
-
-MENU_ENTRY menu_entries[NUM_MENU_ITEMS];
 
 /* Private function prototypes -----------------------------------------------*/
 enum e_status_message __in_flash("buildMenuFromPath") buildMenuFromPath( MENU_ENTRY * );
@@ -198,65 +87,6 @@ void append_entry_to_path(MENU_ENTRY *);
 /*************************************************************************
  * Menu Handling
  *************************************************************************/
-
-char *get_filename_ext(char *filename) {
-	char *dot = strrchr(filename, '.');
-	if(!dot || dot == filename) return (char *)"";
-	return (dot + 1);
-}
-
-/*inline*/ void make_menu_entry_font( MENU_ENTRY **dst, const char *name, int type, uint8_t font) {
-	(*dst)->type = (MENU_ENTRY_Type)type;
-	strcpy((*dst)->entryname, name);
-	(*dst)->filesize = 0U;
-	(*dst)->font = font;
-	(*dst)++;
-	num_menu_entries++;
-}
-
-void make_menu_entry( MENU_ENTRY **dst, const char *name, int type){
-	make_menu_entry_font(dst, name, type, user_settings.font_style);
-}
-
-const char __in_flash("keyboardUppercase") *keyboardUppercase[] = {
-	" 1  2  3  4  5  6  7  8  9  0",
-	"  Q  W  E  R  T  Y  U  I  O  P",
-	"   A  S  D  F  G  H  J  K  L",
-	"    Z  X  C  V  B  N  M",
-	"     " MENU_TEXT_SPACE " !  ?  ,  .",
-	0
-};
-
-const char __in_flash("keyboardLowercase") *keyboardLowercase[] = {
-	" 1  2  3  4  5  6  7  8  9  0",
-	"  q  w  e  r  t  y  u  i  o  p",
-	"   a  s  d  f  g  h  j  k  l",
-	"    z  x  c  v  b  n  m",
-	"     " MENU_TEXT_SPACE " !  ?  ,  .",
-	0
-};
-
-const char __in_flash("keyboardSymbols") *keyboardSymbols[] = {
-	" " MENU_TEXT_SPACE "   ( )  { }  [ ]  < >",
-	"  !  ?  .  ,  :  ;  \"  '  `",
-	"   @  ^  |  \\  ~  #  $  %  &",
-	"    +  -  *  /  =  _",
-	0
-};
-
-enum keyboardType {
-	KEYBOARD_UPPERCASE,
-	KEYBOARD_LOWERCASE,
-	KEYBOARD_SYMBOLS,
-	KEYBOARD_NONE,
-};
-
-static const char __in_flash("keyboards") **keyboards[] = {
-	keyboardUppercase,
-	keyboardLowercase,
-	keyboardSymbols,
-	0
-};
 
 enum keyboardType lastKb = KEYBOARD_UPPERCASE;
 
@@ -274,118 +104,6 @@ int compVersions ( const char * version1, const char * version2 ) {
     return 0;
 }
 
-void make_keyboardFromLine(MENU_ENTRY **dst, char *line) {
-
-	make_menu_entry(dst, MENU_TEXT_GO_BACK, Leave_SubKeyboard_Menu);
-	char item[33];
-	while (*line) {
-		char *entry = item;
-		while (*line && *line == ' ')
-			line++;
-		while (*line && *line != ' ')
-			*entry++ = *line++;
-		*entry = 0;
-		if (*item)
-			make_menu_entry(dst, item, Keyboard_Char);
-	}
-}
-
-void make_keyboard(MENU_ENTRY **dst, enum keyboardType selector){
-
-	make_menu_entry(dst, MENU_TEXT_GO_BACK, Leave_Menu);
-
-	for (const char **kbRow = keyboards[selector]; *kbRow; kbRow++)
-		make_menu_entry(dst, *kbRow, Keyboard_Row);
-
-	if (selector != KEYBOARD_LOWERCASE)
-		make_menu_entry(dst, MENU_TEXT_LOWERCASE, Keyboard_Row);
-	if (selector != KEYBOARD_UPPERCASE)
-		make_menu_entry(dst, MENU_TEXT_UPPERCASE, Keyboard_Row);
-	if (selector != KEYBOARD_SYMBOLS)
-		make_menu_entry(dst, MENU_TEXT_SYMBOLS, Keyboard_Row);
-
-	if (*input_field)
-		make_menu_entry(dst, MENU_TEXT_DELETE_CHAR, Delete_Keyboard_Char);
-
-	make_menu_entry(dst, "Enter", Menu_Action);
-}
-
-/*
-MENU_ENTRY *generateAppearanceMenu(MENU_ENTRY *dst) {
-	make_menu_entry(&dst, MENU_TEXT_GO_BACK, Leave_Menu);
-	make_menu_entry(&dst, MENU_TEXT_TV_MODE_SETUP, Setup_Menu);
-	make_menu_entry(&dst, MENU_TEXT_FONT_SETUP, Setup_Menu);
-	make_menu_entry(&dst, MENU_TEXT_SPACING_SETUP, Setup_Menu);
-	return dst;
-}*/
-
-MENU_ENTRY* generateSetupMenu(MENU_ENTRY *dst) {
-	make_menu_entry(&dst, MENU_TEXT_GO_BACK, Leave_Menu);
-#if USE_WIFI
-	make_menu_entry(&dst, MENU_TEXT_WIFI_SETUP, Setup_Menu);
-#endif
-	make_menu_entry(&dst, MENU_TEXT_DISPLAY, Setup_Menu);
-	make_menu_entry(&dst, MENU_TEXT_SYSTEM_INFO, Sub_Menu);
-
-	if (flash_has_downloaded_roms())
-		make_menu_entry(&dst, MENU_TEXT_DELETE_OFFLINE_ROMS, Menu_Action);
-	else
-		make_menu_entry(&dst, MENU_TEXT_DETECT_OFFLINE_ROMS, Menu_Action);
-	make_menu_entry(&dst, MENU_TEXT_FORMAT_EEPROM, Menu_Action);
-	if (EXIT_SWCHB_ADDR == SWCHB)
-		make_menu_entry(&dst, MENU_TEXT_DISABLE_EMU_EXIT, Menu_Action);
-	else
-		make_menu_entry(&dst, MENU_TEXT_ENABLE_EMU_EXIT, Menu_Action);
-
-	return dst;
-}
-
-MENU_ENTRY* generateSystemInfo(MENU_ENTRY *dst) {
-#if MENU_TYPE == PLUSCART
-	make_menu_entry(&dst, "PlusCart Device ID", Leave_Menu);
-#elif MENU_TYPE == UNOCART
-	make_menu_entry(&dst, "UnoCart Device ID", Leave_Menu);
-#endif
-
-	sprintf(input_field, "        %s", pico_uid);
-	make_menu_entry(&dst, input_field, Leave_Menu);
-
-   //FIXME
-   // add VERSION
-	make_menu_entry(&dst, "Pico Firmware       ", Leave_Menu);
-
-#if USE_WIFI
-	sprintf(input_field, "WiFi Firmware      %s", esp8266_at_version);
-	make_menu_entry(&dst, input_field, Leave_Menu);
-#endif
-
-   sprintf(input_field, "Heap Size          %d KiB", rp2040.getTotalHeap()/1024);
-   make_menu_entry(&dst, input_field, Leave_Menu);
-
-   sprintf(input_field, "Heap Free          %d KiB", rp2040.getFreeHeap()/1024);
-   make_menu_entry(&dst, input_field, Leave_Menu);
-
-   FSInfo64 fsinfo;
-   LittleFS.info64(fsinfo);
-
-	sprintf(input_field, "Flash Size         %d KiB", fsinfo.totalBytes/1024);
-	make_menu_entry(&dst, input_field, Leave_Menu);
-
-	sprintf(input_field, "Flash Used         %d KiB", fsinfo.usedBytes/1024);
-	make_menu_entry(&dst, input_field, Leave_Menu);
-
-#if USE_SD_CARD
-	int* sd_stat = sd_card_statistics();
-   sprintf(input_field, "SD-Card Size       %d MiB", sd_stat[sd_card_total_size] );
-   make_menu_entry(&dst, input_field, Leave_Menu);
-   sprintf(input_field, "SD-Card Used       %d MiB", sd_stat[sd_card_used_size] );
-   make_menu_entry(&dst, input_field, Leave_Menu);
-#endif
-
-	*input_field = 0;
-	return dst;
-}
-
 enum e_status_message generateKeyboard(
 		MENU_ENTRY **dst,
 		MENU_ENTRY *d,
@@ -396,7 +114,7 @@ enum e_status_message generateKeyboard(
 	for (const char ***kb = keyboards; *kb; kb++)
 		for (const char **row = *kb; *row; row++)
 			if (!strcmp(*row, d->entryname)) {
-				make_keyboardFromLine(dst, d->entryname);
+				make_keyboardFromLine(dst, d->entryname, &num_menu_entries);
 				truncate_curPath();
 				return menuStatusMessage;
 			}
@@ -415,7 +133,7 @@ enum e_status_message generateKeyboard(
 		strcat(curPath, "/");				// trimmed off, below
 	}
 
-	make_keyboard(dst, lastKb);
+	make_keyboard(dst, lastKb, &num_menu_entries);
 	truncate_curPath();
 	return menuStatusMessage;
 }
@@ -465,7 +183,7 @@ enum e_status_message buildMenuFromPath( MENU_ENTRY *d )  {
 			d->type == Delete_Keyboard_Char || d->type == Leave_SubKeyboard_Menu ){
 		// toDo  Input_Field to Leave_SubKeyboard_Menu consecutive!
 		e_status_message new_status = select_wifi_network;
-		if (strstr(curPath, MENU_TEXT_SEARCH_FOR_ROM) == curPath){
+		if ( (strstr(curPath, MENU_TEXT_SEARCH_FOR_ROM) == curPath) || (strstr(curPath, MENU_TEXT_SEARCH_FOR_SD_ROM)) ) {
 		    new_status = STATUS_SEARCH_DETAILS;
 		}else{  // All Setup menu stuff here!
 			char *mts = curPath + sizeof(MENU_TEXT_SETUP);   // does a +1 because of MENU_TEXT_SETUP trailing 0
@@ -486,7 +204,7 @@ enum e_status_message buildMenuFromPath( MENU_ENTRY *d )  {
 
 		if (!strcmp(curPath, MENU_TEXT_SETUP)){
 			menuStatusMessage = STATUS_SETUP;
-			dst = generateSetupMenu(dst);
+			dst = generateSetupMenu(dst, &num_menu_entries);
 			loadStore = true;
 		}
 
@@ -497,7 +215,7 @@ enum e_status_message buildMenuFromPath( MENU_ENTRY *d )  {
 
 		else if (strstr(mts, URLENCODE_MENU_TEXT_SYSTEM_INFO) == mts) {
 			menuStatusMessage = STATUS_SETUP_SYSTEM_INFO;
-			dst = generateSystemInfo(dst);
+			dst = generateSystemInfo(dst, &num_menu_entries, input_field);
 			loadStore = true;
 		}
 #if USE_WIFI
@@ -510,14 +228,13 @@ enum e_status_message buildMenuFromPath( MENU_ENTRY *d )  {
 
 				set_menu_status_msg(curPath);
 
-				make_menu_entry(&dst, MENU_TEXT_GO_BACK, Leave_Menu);
-				make_menu_entry(&dst, MENU_TEXT_WIFI_SELECT, Setup_Menu);
-				make_menu_entry(&dst, MENU_TEXT_WIFI_WPS_CONNECT, Menu_Action);
-				make_menu_entry(&dst, MENU_TEXT_WIFI_MANAGER, Menu_Action);
-				make_menu_entry(&dst, MENU_TEXT_ESP8266_RESTORE, Menu_Action);
+				make_menu_entry(&dst, MENU_TEXT_GO_BACK, Leave_Menu, &num_menu_entries);
+				make_menu_entry(&dst, MENU_TEXT_WIFI_SELECT, Setup_Menu, &num_menu_entries);
+				make_menu_entry(&dst, MENU_TEXT_WIFI_WPS_CONNECT, Menu_Action, &num_menu_entries);
+				make_menu_entry(&dst, MENU_TEXT_WIFI_MANAGER, Menu_Action, &num_menu_entries);
+				make_menu_entry(&dst, MENU_TEXT_ESP8266_RESTORE, Menu_Action, &num_menu_entries);
 				if(compVersions(esp8266_at_version, CURRENT_ESP8266_FIRMWARE) == -1)
-					make_menu_entry(&dst, MENU_TEXT_ESP8266_UPDATE, Menu_Action);
-
+					make_menu_entry(&dst, MENU_TEXT_ESP8266_UPDATE, Menu_Action, &num_menu_entries);
 			}
 
 			else {
@@ -558,7 +275,7 @@ enum e_status_message buildMenuFromPath( MENU_ENTRY *d )  {
 
 					else {
 						menuStatusMessage = select_wifi_network;
-						make_menu_entry(&dst, MENU_TEXT_GO_BACK, Leave_Menu);
+						make_menu_entry(&dst, MENU_TEXT_GO_BACK, Leave_Menu, &num_menu_entries);
 						if( esp8266_wifi_list( &dst, &num_menu_entries) == false){
 				    		return esp_timeout;
 				    	}
@@ -619,10 +336,10 @@ enum e_status_message buildMenuFromPath( MENU_ENTRY *d )  {
 
 				set_menu_status_msg(curPath);
 
-				make_menu_entry(&dst, MENU_TEXT_GO_BACK, Leave_Menu);
-				make_menu_entry(&dst, MENU_TEXT_TV_MODE_SETUP, Setup_Menu);
-				make_menu_entry(&dst, MENU_TEXT_FONT_SETUP, Setup_Menu);
-				make_menu_entry(&dst, MENU_TEXT_SPACING_SETUP, Setup_Menu);
+				make_menu_entry(&dst, MENU_TEXT_GO_BACK, Leave_Menu, &num_menu_entries);
+				make_menu_entry(&dst, MENU_TEXT_TV_MODE_SETUP, Setup_Menu, &num_menu_entries);
+				make_menu_entry(&dst, MENU_TEXT_FONT_SETUP, Setup_Menu, &num_menu_entries);
+				make_menu_entry(&dst, MENU_TEXT_SPACING_SETUP, Setup_Menu, &num_menu_entries);
 			}
 
 			else {
@@ -652,10 +369,10 @@ enum e_status_message buildMenuFromPath( MENU_ENTRY *d )  {
 						menuStatusMessage = STATUS_SETUP_TV_MODE;
 						set_menu_status_msg(curPath);
 
-						make_menu_entry(&dst, MENU_TEXT_GO_BACK, Leave_Menu);
+						make_menu_entry(&dst, MENU_TEXT_GO_BACK, Leave_Menu, &num_menu_entries);
 
 						for (int tv = 1; tv < sizeof tvModes / sizeof *tvModes; tv++) {
-							make_menu_entry(&dst, tvModes[tv], Menu_Action);
+							make_menu_entry(&dst, tvModes[tv], Menu_Action, &num_menu_entries);
 							if (user_settings.tv_mode == tv)
 								*(dst-1)->entryname = CHAR_SELECTION;
 						}
@@ -683,10 +400,10 @@ enum e_status_message buildMenuFromPath( MENU_ENTRY *d )  {
 					else{
 
 						menuStatusMessage = STATUS_SETUP_FONT_STYLE;
-						make_menu_entry(&dst, MENU_TEXT_GO_BACK, Leave_Menu);
+						make_menu_entry(&dst, MENU_TEXT_GO_BACK, Leave_Menu, &num_menu_entries);
 
 						for (uint8_t font=0; font < sizeof menuFontNames / sizeof *menuFontNames; font++) {
-							make_menu_entry_font(&dst, menuFontNames[font], Menu_Action, font);
+							make_menu_entry_font(&dst, menuFontNames[font], Menu_Action, font, &num_menu_entries);
 							if (user_settings.font_style == font)
 								*(dst-1)->entryname = CHAR_SELECTION;
 						}
@@ -716,10 +433,10 @@ enum e_status_message buildMenuFromPath( MENU_ENTRY *d )  {
 
 						menuStatusMessage = STATUS_SETUP_LINE_SPACING;
 
-						make_menu_entry(&dst, MENU_TEXT_GO_BACK, Leave_Menu);
+						make_menu_entry(&dst, MENU_TEXT_GO_BACK, Leave_Menu, &num_menu_entries);
 
 						for (uint8_t spacing = 0; spacing < sizeof spacingModes / sizeof *spacingModes; spacing++) {
-							make_menu_entry(&dst, spacingModes[spacing], Menu_Action);
+							make_menu_entry(&dst, spacingModes[spacing], Menu_Action, &num_menu_entries);
 							if (user_settings.line_spacing == spacing)
 								*(dst-1)->entryname = CHAR_SELECTION;
 						}
@@ -797,7 +514,7 @@ enum e_status_message buildMenuFromPath( MENU_ENTRY *d )  {
 		}
 		else if (strstr(curPath, MENU_TEXT_SD_FIRMWARE_UPDATE) == curPath) {
 			uint32_t bytes_to_read = d->filesize - 0x4000;
-#if USE_SD_CARD
+#if USE_SD_CARDxxx
 			uint32_t bytes_to_ram = d->filesize > FIRMWARE_MAX_RAM ? FIRMWARE_MAX_RAM : d->filesize;
          char firmware_str[32];
          strcat(firmware_str, MENU_TEXT_SD_CARD_CONTENT);
@@ -821,13 +538,14 @@ enum e_status_message buildMenuFromPath( MENU_ENTRY *d )  {
 			*curPath = 0;
 		}
 #if USE_SD_CARD
-		else if (strstr(curPath, MENU_TEXT_SEARCH_FOR_ROM) == curPath) {
+		else if (strstr(curPath, MENU_TEXT_SEARCH_FOR_SD_ROM) == curPath) {
 			// Cart with SD and WiFi will search only here (SD) ! -> maybe use "Search SD ROM" ?
 			loadStore = false;
 			truncate_curPath(); // delete "/Enter"
-			make_menu_entry(&dst, "..", Leave_Menu);
+			make_menu_entry(&dst, "..", Leave_Menu, &num_menu_entries);
 			http_request_header[0] = '\0';
-			sd_card_find_file( http_request_header, &curPath[sizeof(MENU_TEXT_SEARCH_FOR_ROM)], &dst, &num_menu_entries );
+			sd_card_find_file( http_request_header, &curPath[sizeof(MENU_TEXT_SEARCH_FOR_SD_ROM)], &dst, &num_menu_entries );
+         menuStatusMessage = STATUS_CHOOSE_ROM;
 		}
 #endif
 		else if (strstr(curPath, MENU_TEXT_WIFI_RECONNECT) == curPath){
@@ -868,7 +586,7 @@ enum e_status_message buildMenuFromPath( MENU_ENTRY *d )  {
     	}
 
     	if (d->type == Offline_Sub_Menu || strstr(curPath, MENU_TEXT_OFFLINE_ROMS) == curPath) {
-    		make_menu_entry(&dst, "..", Leave_Menu);
+    		make_menu_entry(&dst, "..", Leave_Menu, &num_menu_entries);
     		flash_file_list(&curPath[sizeof(MENU_TEXT_OFFLINE_ROMS) - 1], &dst, &num_menu_entries);
     	}
 
@@ -886,7 +604,7 @@ enum e_status_message buildMenuFromPath( MENU_ENTRY *d )  {
     		if(*input_field)
     			menuStatusMessage = STATUS_MESSAGE_STRING;
         }else if(strlen(curPath) == 0){
-        	make_menu_entry(&dst, MENU_TEXT_WIFI_RECONNECT, Menu_Action);
+        	make_menu_entry(&dst, MENU_TEXT_WIFI_RECONNECT, Menu_Action, &num_menu_entries);
     	}
 #endif
         if(trim_path){
@@ -904,19 +622,18 @@ enum e_status_message buildMenuFromPath( MENU_ENTRY *d )  {
     		menuStatusMessage = STATUS_ROOT;
 
 #if USE_SD_CARD
-    	make_menu_entry(&dst, MENU_TEXT_SD_CARD_CONTENT, SD_Sub_Menu);
-#if USE_WIFI == 0 // todo check how to sort man menu and how to search
-    	make_menu_entry(&dst, MENU_TEXT_SEARCH_FOR_ROM, Input_Field);
+    	make_menu_entry(&dst, MENU_TEXT_SD_CARD_CONTENT, SD_Sub_Menu, &num_menu_entries);
+    	make_menu_entry(&dst, MENU_TEXT_SEARCH_FOR_SD_ROM, Input_Field, &num_menu_entries);
 #endif
-#endif
-    	if(flash_has_downloaded_roms())
-    		make_menu_entry(&dst, MENU_TEXT_OFFLINE_ROMS, Offline_Sub_Menu);
+    	if(flash_has_downloaded_roms()) {
+    		make_menu_entry(&dst, MENU_TEXT_OFFLINE_ROMS, Offline_Sub_Menu, &num_menu_entries);
+      }
 
-    	make_menu_entry(&dst, MENU_TEXT_SETUP, Setup_Menu);
+    	make_menu_entry(&dst, MENU_TEXT_SETUP, Setup_Menu, &num_menu_entries);
 	}
 
     if(num_menu_entries == 0){
-		make_menu_entry(&dst, "..", Leave_Menu);
+		make_menu_entry(&dst, "..", Leave_Menu, &num_menu_entries);
     }
 
     return menuStatusMessage;
@@ -1162,77 +879,137 @@ close:
  * Main loop/helper functions
  *************************************************************************/
 
+
 void emulate_cartridge(CART_TYPE cart_type, MENU_ENTRY *d)
 {
-	int offset = 0;
+   uint32_t addr; 
+   bool core1_is_running = false;
+
+   // reset core1
+   multicore_reset_core1();
 
 	if (cart_type.withPlusFunctions == true ){
  		// Read path and hostname in ROM File from where NMI points to till '\0' and
 		// copy to http_request_header
 #if USE_WIFI
-		offset = esp8266_PlusROM_API_connect(cart_size_bytes);
+		esp8266_PlusROM_API_connect(cart_size_bytes);
 #endif
 	}
 
 	if (cart_type.base_type == base_type_2K) {
 		memcpy(buffer+0x800, buffer, 0x800);
-		emulate_standard_cartridge(offset, cart_type.withPlusFunctions, 0x2000, 0x0000, cart_type.withSuperChip);
-	}
-	else if (cart_type.base_type ==  base_type_4K)
-		emulate_standard_cartridge(offset, cart_type.withPlusFunctions, 0x2000, 0x0000, cart_type.withSuperChip);
+      addr = (uint32_t) &cart_type;
+      queue_add_blocking(&qargs, &addr);
+      multicore_launch_core1(_emulate_standard_cartridge);
+      core1_is_running = true;
+   
+   } else if (cart_type.base_type ==  base_type_4K) {
+      addr = (uint32_t) &cart_type;
+      queue_add_blocking(&qargs, &addr);
+      multicore_launch_core1(_emulate_standard_cartridge);
+      core1_is_running = true;
 
-	else if (cart_type.base_type == base_type_F8)
-		emulate_standard_cartridge(offset, cart_type.withPlusFunctions, 0x1FF8, 0x1FF9, cart_type.withSuperChip);
+   } else if (cart_type.base_type == base_type_F8) {
+      addr = (uint32_t) &cart_type;
+      queue_add_blocking(&qargs, &addr);
+      multicore_launch_core1(_emulate_standard_cartridge);
+      core1_is_running = true;
 
-	else if (cart_type.base_type == base_type_F6)
-		emulate_standard_cartridge(offset, cart_type.withPlusFunctions, 0x1FF6, 0x1FF9, cart_type.withSuperChip);
+   } else if (cart_type.base_type == base_type_F6) {
+      addr = (uint32_t) &cart_type;
+      queue_add_blocking(&qargs, &addr);
+      multicore_launch_core1(_emulate_standard_cartridge);
+      core1_is_running = true;
 
-	else if (cart_type.base_type == base_type_F4)
-		emulate_standard_cartridge(offset, cart_type.withPlusFunctions, 0x1FF4, 0x1FFB, cart_type.withSuperChip);
+   } else if (cart_type.base_type == base_type_F4) {
+      addr = (uint32_t) &cart_type;
+      queue_add_blocking(&qargs, &addr);
+      multicore_launch_core1(_emulate_standard_cartridge);
+      core1_is_running = true;
 
-	else if (cart_type.base_type == base_type_FE)
-		emulate_FE_cartridge();
+   } else if (cart_type.base_type == base_type_FE) {
+		multicore_launch_core1(_emulate_FE_cartridge);
+      core1_is_running = true;
 
-	else if (cart_type.base_type == base_type_UA)
-		emulate_UA_cartridge();
+   } else if (cart_type.base_type == base_type_UA) {
+		multicore_launch_core1(_emulate_UA_cartridge);
+      core1_is_running = true;
 
-	else if (cart_type.base_type == base_type_3F)
-		emulate_3F_cartridge();
+   } else if (cart_type.base_type == base_type_3F) {
+		multicore_launch_core1(_emulate_3F_cartridge);
+      core1_is_running = true;
 
-	else if (cart_type.base_type == base_type_3E)
-		emulate_3E_cartridge(offset, cart_type.withPlusFunctions);
+   } else if (cart_type.base_type == base_type_3E) {
+      addr = (uint32_t) &cart_type;
+      queue_add_blocking(&qargs, &addr);
+		multicore_launch_core1(_emulate_3E_cartridge);
+      core1_is_running = true;
 
-	else if (cart_type.base_type == base_type_E0)
-		emulate_E0_cartridge();
+   } else if (cart_type.base_type == base_type_E0) {
+		multicore_launch_core1(_emulate_E0_cartridge);
+      core1_is_running = true;
 
-	else if (cart_type.base_type == base_type_0840)
-		emulate_0840_cartridge();
+   } else if (cart_type.base_type == base_type_0840) {
+		multicore_launch_core1(_emulate_0840_cartridge);
+      core1_is_running = true;
 
-	else if (cart_type.base_type == base_type_CV)
-		emulate_CV_cartridge();
+   } else if (cart_type.base_type == base_type_CV) {
+		multicore_launch_core1(_emulate_CV_cartridge);
+      core1_is_running = true;
 
-	else if (cart_type.base_type == base_type_EF)
-		emulate_standard_cartridge(offset, cart_type.withPlusFunctions, 0x1FE0, 0x1FEF, cart_type.withSuperChip);
+   } else if (cart_type.base_type == base_type_EF) {
+      addr = (uint32_t) &cart_type;
+      queue_add_blocking(&qargs, &addr);
+      multicore_launch_core1(_emulate_standard_cartridge);
+      core1_is_running = true;
 
-	else if (cart_type.base_type == base_type_F0)
-		emulate_F0_cartridge();
+   } else if (cart_type.base_type == base_type_F0) {
+		multicore_launch_core1(_emulate_F0_cartridge);
+      core1_is_running = true;
 
-	else if (cart_type.base_type == base_type_FA)
-		emulate_FA_cartridge(offset, cart_type.withPlusFunctions);
+   } else if (cart_type.base_type == base_type_FA) {
+      addr = (uint32_t) &cart_type;
+      queue_add_blocking(&qargs, &addr);
+      multicore_launch_core1(_emulate_FA_cartridge);
+      core1_is_running = true;
 
-	else if (cart_type.base_type == base_type_E7)
-		emulate_E7_cartridge(offset, cart_type.withPlusFunctions);
+   } else if (cart_type.base_type == base_type_E7) {
+      addr = (uint32_t) &cart_type;
+      queue_add_blocking(&qargs, &addr);
+		multicore_launch_core1(_emulate_E7_cartridge);
+      core1_is_running = true;
 
-	else if (cart_type.base_type == base_type_DPC)
-		emulate_DPC_cartridge((uint32_t)cart_size_bytes);
+   } else if (cart_type.base_type == base_type_DPC) {
+		multicore_launch_core1(_emulate_DPC_cartridge);
+      core1_is_running = true;
 
-	else if (cart_type.base_type == base_type_AR)
+   } else if (cart_type.base_type == base_type_3EPlus) {
+      addr = (uint32_t) &cart_type;
+      queue_add_blocking(&qargs, &addr);
+		multicore_launch_core1(_emulate_3EPlus_cartridge);
+      core1_is_running = true;
+
+   } else if (cart_type.base_type == base_type_PP) {
+		multicore_launch_core1(_emulate_pp_cartridge);
+      core1_is_running = true;
+
+   } else if (cart_type.base_type == base_type_AR) {
 		emulate_ar_cartridge(curPath, cart_size_bytes, buffer, user_settings.tv_mode, d);
+      /*
+      addr = (uint32_t) &curPath;
+      queue_add_blocking(&qargs, &addr);
+      addr = (uint32_t) &cart_size_bytes;
+      queue_add_blocking(&qargs, &addr);
+      addr = (uint32_t) &buffer;
+      queue_add_blocking(&qargs, &addr);
+      addr = (uint32_t) &(user_settings.tv_mode);
+      queue_add_blocking(&qargs, &addr);
+      addr = (uint32_t) &d;
+      queue_add_blocking(&qargs, &addr);
+		multicore_launch_core1(_emulate_ar_cartridge);
+      */
 
-	else if (cart_type.base_type == base_type_PP)
-		emulate_pp_cartridge( buffer + 8*1024);
-
-	else if (cart_type.base_type == base_type_DF)
+   } else if (cart_type.base_type == base_type_DF)
 		emulate_df_cartridge(curPath, cart_size_bytes, buffer, d);
 
 	else if (cart_type.base_type == base_type_DFSC)
@@ -1243,14 +1020,6 @@ void emulate_cartridge(CART_TYPE cart_type, MENU_ENTRY *d)
 
 	else if (cart_type.base_type == base_type_BFSC)
 		emulate_bfsc_cartridge(curPath, cart_size_bytes, buffer, d);
-
-	else if (cart_type.base_type == base_type_3EPlus)
-		emulate_3EPlus_cartridge(offset, cart_type.withPlusFunctions);
-
-#if 0
-	else if (cart_type.base_type == base_type_DPCplus)
-		emulate_DPCplus_cartridge(cart_size_bytes);
-#endif
 
 	else if (cart_type.base_type == base_type_SB)
 		emulate_SB_cartridge(curPath, cart_size_bytes, buffer, d);
@@ -1268,9 +1037,38 @@ void emulate_cartridge(CART_TYPE cart_type, MENU_ENTRY *d)
 	}
 #endif
 
+   uint8_t flag;
+#if USE_WIFI
+   if(cart_type.withPlusFunctions) {
+
+      // handle ESP - ROM communication
+      handle_plusrom_comms();
+
+   } else {
+#endif
+   
+      if(core1_is_running) { 
+
+         // do something else...
+            
+         queue_remove_blocking(&qprocs, &flag);
+      }
+
+#if USE_WIFI
+   } 
+#endif
+
 #if USE_WIFI
 	if (cart_type.withPlusFunctions)
-		esp8266_PlusStore_API_end_transmission();
+      // without reset pin...
+      /*
+      sleep_ms(1500);
+      sendCommand("+");
+      sendCommand("+");
+      sendCommand("+");
+      sleep_ms(1500);
+      */
+      esp8266_init();
 #endif
 
 }
@@ -1287,7 +1085,7 @@ void truncate_curPath(){
 		}
 
 	// trim to last / OR if none, whole path
-	char *sep = strrchr(curPath, PATH_SEPERATOR);
+	char *sep = strrchr(curPath, PATH_SEPARATOR);
 	if (!sep)
 		sep = curPath;
 	*sep = 0;
@@ -1331,8 +1129,8 @@ void system_secondary_init(void){
 
 #if USE_WIFI
      espSerial.setFIFOSize(WIFIESPAT_CLIENT_RX_BUFFER_SIZE);
-     espSerial.begin(115200, SERIAL_8N1);
-     WiFi.init(espSerial);
+     espSerial.begin(921600, SERIAL_8N1);
+     WiFi.init(espSerial,ESP_RESET_PIN);
 #endif
 
      LittleFSConfig cfg;
@@ -1340,6 +1138,8 @@ void system_secondary_init(void){
      LittleFS.setConfig(cfg);
      LittleFS.begin();
 
+     queue_init(&qprocs, sizeof(uint8_t), 32);
+     queue_init(&qargs, sizeof(uint32_t), 16);
 
 #if DBG_SERIAL
      dbg("start\n\r");
@@ -1397,6 +1197,7 @@ void setup() {
 
   // there are some issue at startup due to time required to setup pins
   // if firmware starts too late 2600 bus will hang...
+
   /*
   for(int pin=0; pin<ADDRWIDTH; pin++) {
      gpio_set_slew_rate(PINROMADDR + pin, GPIO_SLEW_RATE_FAST);

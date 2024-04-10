@@ -21,6 +21,7 @@
 #if USE_WIFI
 
 #include "global.h"
+#include "menu.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -30,7 +31,6 @@
 #include <SoftwareSerial.h>
 
 static char tmp_uart_buffer[50];
-static char line[50];
 
 static WiFiClient client;
 static WiFiServer server;

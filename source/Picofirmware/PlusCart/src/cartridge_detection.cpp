@@ -10,6 +10,47 @@
 #include "cartridge_detection.h"
 #include "global.h"
 
+const __in_flash("ext_to_cart_type_map") EXT_TO_CART_TYPE_MAP ext_to_cart_type_map[] = {
+   {"ROM",  { base_type_None,    false, false, false, false }},
+   {"BIN",  { base_type_None,    false, false, false, false }},
+   {"A26",  { base_type_None,    false, false, false, false }},
+   {"2K",   { base_type_2K,      false, false, false, false }},
+   {"4K",   { base_type_4K,      false, false, false, false }},
+   {"4KS",  { base_type_4K,      true,  false, false, false }},
+   {"F8",   { base_type_F8,      false, false, false, false }},
+   {"F6",   { base_type_F6,      false, false, false, false }},
+   {"F4",   { base_type_F4,      false, false, false, false }},
+   {"F8S",  { base_type_F8,      true,  false, false, false }},
+   {"F6S",  { base_type_F6,      true,  false, false, false }},
+   {"F4S",  { base_type_F4,      true,  false, false, false }},
+   {"FE",   { base_type_FE,      false, false, false, false }},
+   {"3F",   { base_type_3F,      false, false, false, false }},
+   {"3E",   { base_type_3E,      false, false, false, false }},
+   {"E0",   { base_type_E0,      false, false, false, false }},
+   {"084",  { base_type_0840,    false, false, false, false }},
+   {"CV",   { base_type_CV,      false, false, false, false }},
+   {"EF",   { base_type_EF,      false, false, false, false }},
+   {"EFS",  { base_type_EF,      true,  false, false, false }},
+   {"F0",   { base_type_F0,      false, false, false, false }},
+   {"FA",   { base_type_FA,      false, false, false, false }},
+   {"E7",   { base_type_E7,      false, false, false, false }},
+   {"DPC",  { base_type_DPC,     false, false, true,  true  }},
+   {"AR",   { base_type_AR,      false, false, false, false }},
+   {"BF",   { base_type_BF,      false, false, true,  false }},
+   {"BFS",  { base_type_BFSC,    false, false, true,  false }},
+   {"ACE",  { base_type_ACE,     false, false, false, false }},
+   {"WD",   { base_type_PP,      false, false, false, false }},
+   {"DF",   { base_type_DF,      false, false, true,  false }},
+   {"DFS",  { base_type_DFSC,    false, false, true,  false }},
+   {"3EP",  { base_type_3EPlus,  false, false, false, false }},
+   {"DPCP", { base_type_DPCplus, false, false, false, true  }},
+   {"SB",   { base_type_SB,      false, false, true,  false }},
+   {"UA",   { base_type_UA,      false, false, false, false }},
+   {"ELF",  { base_type_ELF,     false, false, false, false }},
+
+   {0,{base_type_None,0,0}}
+};
+
 /*************************************************************************
  * Cartridge Type Detection
  *************************************************************************/

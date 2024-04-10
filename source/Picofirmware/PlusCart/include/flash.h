@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include "hardware/flash.h"
 #include "global.h"
+#include "menu.h"
+#include "user_settings.h"
 #include "LittleFS.h"
 #include <EEPROM.h>
 
@@ -13,11 +15,11 @@
 #define FREE_SECTOR_EEPROM_ADDR  0x03
 
 extern uint32_t _FS_start[], _FS_end[];
-#define FS_SIZE   (_FS_end - _FS_start)
+#define FLASH_FS_SIZE   (_FS_end - _FS_start)
 #define EEPROM_SIZE  4096
 
 #define FLASH_AREA_SIZE          512 * 1024     // 512 KB
-#define FLASH_AREA_OFFSET        PICO_FLASH_SIZE_BYTES - (FLASH_AREA_SIZE + FS_SIZE + EEPROM_SIZE)
+#define FLASH_AREA_OFFSET        PICO_FLASH_SIZE_BYTES - (FLASH_AREA_SIZE + FLASH_FS_SIZE + EEPROM_SIZE)
 
 /*
 void flash_firmware_update(uint32_t)__attribute__((section(".data#")));

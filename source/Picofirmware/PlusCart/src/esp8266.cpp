@@ -20,23 +20,25 @@
 
 #if USE_WIFI
 
+#include "board.h"
 #include "global.h"
+#include "user_settings.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include "esp8266.h"
 #include "md5.h"
-#include <SoftwareSerial.h>
+#include <hardware/uart.h>
 
 WiFiClient client;
 
 char tmp_uart_buffer[50];
 char esp8266_at_version[15];
 
-extern char pico_uid[2 * PICO_UNIQUE_BOARD_ID_SIZE_BYTES + 1];
+extern queue_t pqueue;
 
-int esp8266_file_list( char *path, MENU_ENTRY **dst, int *num_menu_entries, uint8_t *plus_store_status, char * status_message){
+int esp8266_file_list( char *path, MENU_ENTRY **dst, int *num_menu_entries, uint8_t *plus_store_status, char *status_msg){
 
 	int char_counter = 0, trim_path = 0;
 	bool is_entry_row, is_status_row;
@@ -66,14 +68,14 @@ int esp8266_file_list( char *path, MENU_ENTRY **dst, int *num_menu_entries, uint
 			if(is_status_row){
 				if (c == '\n'){
 					is_status_row = false;
-					status_message[pos] = '\0';
+					status_msg[pos] = '\0';
 					pos = 0;
 				}else if(bytes_read < 1){
 					plus_store_status[bytes_read] = (uint8_t)c;
 				}else if(bytes_read < 2){
 					trim_path = c - '0';
 				}else{
-					status_message[pos++] = c;
+					status_msg[pos++] = c;
 				}
 
 			} else if((*num_menu_entries) < NUM_MENU_ITEMS){
@@ -168,6 +170,7 @@ void esp8266_PlusStore_API_end_transmission(){
    client.stop();
 }
 
+
 uint32_t esp8266_PlusStore_API_range_request(char *path, http_range range, uint8_t *ext_buffer){
 	uint32_t response_size = 0;
 	uint16_t expected_size =  (uint16_t) ( range.stop + 1 - range.start );
@@ -234,16 +237,26 @@ int esp8266_PlusROM_API_connect(unsigned int size){
 	unsigned char device_id_hash[16];
 	int offset = (int)strlen((char *)&buffer[i]) + 1 + i;
 
-   md5((unsigned char *)pico_uid, 24, device_id_hash);
+   md5((unsigned char *)pico_uid, strlen(pico_uid), device_id_hash);
 
+   // stop previous TCP connections
    client.stop();
+
+   empty_rx();
+
+   sendCommandGetResponse("ATE0\r\n", 2000); 
+   sendCommandGetResponse("AT+CWMODE=1\r\n", 2000);
+   sendCommandGetResponse("AT+CIPMUX=0\r\n", 2000); 
+   sendCommandGetResponse("AT+CIPSERVER=0\r\n", 2000); 
+   sendCommandGetResponse("AT+CIPMODE=1\r\n", 2000); 
+   sendCommandGetResponse("AT+SLEEP=0\r\n", 2000);
 
    http_request_header[0] = '\0';
 	strcat(http_request_header, (char *)"AT+CIPSTART=\"TCP\",\"");
    strcat(http_request_header, (char *)&buffer[offset]);
    strcat(http_request_header, (char *)"\",80,1\r\n");
 
-   client.connect((char *)&buffer[offset], 80);
+   sendCommandGetResponse(http_request_header, PLUSROM_API_CONNECT_TIMEOUT);
 
    http_request_header[0] = '\0';
    strcat(http_request_header, (char *)"POST /");
@@ -261,8 +274,9 @@ int esp8266_PlusROM_API_connect(unsigned int size){
    strcat(http_request_header, (char *)";nick=\r\nContent-Length:    \r\n\r\n");
    offset = (int)strlen(http_request_header);
 
-   client.write(http_request_header, strlen(http_request_header));
-   client.flush();  
+   sendCommand(API_ATCMD_2);
+   sleep_ms(250);
+   empty_rx();
 
    return offset;
 }
@@ -305,11 +319,13 @@ void esp8266_init() {
 
    int count = 0;
 
-   WiFi.init(espSerial);
+   WiFi.init(espSerial, ESP_RESET_PIN);
 
+   //FIXME 
+   // ESP32-C3 takes more time to bring-up wifi...
    do{
       sleep_ms(1000);
-   } while(esp8266_is_connected() == false && count++ < 7);
+   } while(esp8266_is_connected() == false && count++ < 20);
 }
 
 #if 0

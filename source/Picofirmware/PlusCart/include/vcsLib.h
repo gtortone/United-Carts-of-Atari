@@ -2,6 +2,7 @@
 #define VCSLIB_H
 
 #include <stdint.h>
+#include "cartridge_io.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -74,7 +75,7 @@ extern "C" {
 
 #define INPT4 0x000c
 #ifndef SWCHA
-#define SWCHA 0x0280
+   #define SWCHA 0x0280
 #endif
 
 

@@ -4,12 +4,15 @@
 #include <stdint.h>
 #include "pico/stdlib.h"
 #include "hardware/structs/sio.h"
+#include "board.h"
 
+#define SWCHA          0x280
 #define SWCHB          0x282
 
-#define PINROMADDR  2
-#define PINENABLE  14
-#define PINROMDATA 15
+#define RESET_ADDR addr = addr_prev = 0xffff;
+
+// Used to control exit function
+extern uint16_t EXIT_SWCHB_ADDR;
 
 #define ADDR_GPIO_MASK  (0xFFF << PINROMADDR)
 #define A12_GPIO_MASK   (0x1 << PINENABLE)
@@ -23,8 +26,5 @@
 #define SET_DATA_MODE_IN    sio_hw->gpio_oe_clr = DATA_GPIO_MASK;
 #define SET_DATA_MODE_OUT   sio_hw->gpio_oe_set = DATA_GPIO_MASK;
 #define SET_DATA_MODE(m)    sio_hw->gpio_oe_togl = (sio_hw->gpio_oe ^ (m << PINROMDATA));
-
-// Used to control exit function
-extern uint16_t EXIT_SWCHB_ADDR;
 
 #endif // CARTRIDGE_IO_H

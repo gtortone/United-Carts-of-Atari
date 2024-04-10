@@ -5,175 +5,89 @@
 #include <stdbool.h>
 #include <WiFiEspAT.h>
 #include "global.h"
+#include "plusrom.h"
 #include "hardware/sync.h"
+#include "cartridge_detection.h"
 
-#define RESET_ADDR addr = addr_prev = 0xffff;
-#define CCM_RAM ((uint8_t*)0x10000000)
+// multiproc queue to sync start/stop cartridge and PlusROM communications
+extern queue_t qprocs;
 
-#define SWCHA          0x280
+// multiproc queue to pass function arguments as memory pointer
+extern queue_t qargs;
 
-enum Transmission_State{
-	No_Transmission,
-	Send_Start,
-	Send_Prepare_Header,
-	Send_Header,
-	Send_Content,
-	Send_Finished,
-	Receive_Header,
-	Receive_Length,
-	Receive_Content,
-	Receive_Finished
-};
-
-#if USE_WIFI
-#define setup_plus_rom_functions() \
-   uint8_t receive_buffer_write_pointer = 0, receive_buffer_read_pointer = 0, content_counter = 0; \
-   uint8_t out_buffer_write_pointer = 0, out_buffer_send_pointer = 0; \
-   uint8_t receive_buffer[256], out_buffer[256]; \
-   uint8_t prev_c = 0, prev_prev_c = 0, i, c; \
-   uint16_t content_len; \
-   int content_length_pos = header_length - 5; \
-   enum Transmission_State uart_state = No_Transmission;
-   extern WiFiClient client;   
-#else //Todo make setup_plus_rom_functions empty if no WiFi
-#define setup_plus_rom_functions() 
-#endif
-
-#if USE_WIFI
-#define process_transmission() \
-        switch(uart_state){ \
-          case Send_Start: { \
-        	   content_len = out_buffer_write_pointer; \
-        	   content_len++; \
-            i = (uint8_t) content_length_pos; \
-            uart_state = Send_Prepare_Header; \
-            break; \
-          } \
-          case Send_Prepare_Header: { \
-            if (content_len != 0) { \
-              c = (uint8_t) (content_len % 10); \
-              http_request_header[i--] =  (char) (c + '0'); \
-              content_len = content_len/10; \
-            }else{ \
-              i = 0; \
-              uart_state = Send_Header; \
-            } \
-            break; \
-          } \
-          case Send_Header: { \
-            if(client.available()){ \
-              client.write(http_request_header[i]); \
-              client.flush(); \
-              if( ++i == header_length ){ \
-                uart_state = Send_Content; \
-              } \
-            } \
-            break; \
-          } \
-          case Send_Content: { \
-            if(client.available()) { \
-              client.write(out_buffer[out_buffer_send_pointer]); \
-              client.flush(); \
-              if( out_buffer_send_pointer == out_buffer_write_pointer ){ \
-                uart_state = Send_Finished; \
-              }else{ \
-                out_buffer_send_pointer++; \
-              } \
-            } \
-            break; \
-          } \
-          case Send_Finished: { \
-            out_buffer_write_pointer = 0; \
-            out_buffer_send_pointer = 0; \
-            uart_state = Receive_Header; \
-            break; \
-          } \
-          case Receive_Header: { \
-            if(client.available()) { \
-              c = client.read(); \
-              if(c == '\n' && c == prev_prev_c){ \
-                uart_state = Receive_Length; \
-              }else{ \
-                prev_prev_c = prev_c; \
-                prev_c = c; \
-              } \
-            } \
-            break; \
-          } \
-          case Receive_Length: { \
-            if(client.available()) { \
-              c = client.read(); \
-              uart_state = Receive_Content; \
-              if(c == 0) \
-                uart_state = Receive_Finished; \
-            } \
-            break; \
-          } \
-          case Receive_Content: { \
-            if(client.available()){ \
-              receive_buffer[receive_buffer_write_pointer++] = client.read(); \
-              if(++content_counter == c ){ \
-                uart_state = Receive_Finished; \
-              } \
-            } \
-            break; \
-          } \
-          case Receive_Finished:{ \
-            http_request_header[content_length_pos - 1] = ' '; \
-            http_request_header[content_length_pos - 2] = ' '; \
-            content_counter = 0; \
-            uart_state = No_Transmission; \
-            break; \
-          } \
-          case No_Transmission: \
-          default: \
-            break; \
-        }
-#else
-#define process_transmission()
-#endif
+// multicore sync
+extern const uint8_t emuexit, sendstart, recvdone;
 
 void exit_cartridge(uint16_t , uint16_t );
 
 /* 'Standard' Bankswitching */
-void __time_critical_func(emulate_standard_cartridge)(int, bool, uint16_t, uint16_t, int);
+//void emulate_standard_cartridge(bool, uint16_t, uint16_t, int);
+void emulate_standard_cartridge(CART_TYPE *cart_type);
+// multicore wrapper
+void _emulate_standard_cartridge(void);
 
 /* UA Bankswitching */
-void emulate_UA_cartridge();
+void emulate_UA_cartridge(void);
+// multicore wrapper
+void _emulate_UA_cartridge(void);
 
 /* FA (CBS RAM plus) Bankswitching */
-void emulate_FA_cartridge(int, bool);
+void emulate_FA_cartridge(CART_TYPE *cart_type);
+// multicore wrapper
+void _emulate_FA_cartridge(void);
 
 /* FE Bankswitching */
 void emulate_FE_cartridge();
+// multicore wrapper
+void _emulate_FE_cartridge();
 
 /* 3F (Tigervision) Bankswitching */
 void emulate_3F_cartridge();
+// multicore wrapper
+void _emulate_3F_cartridge();
 
 /* 3E (3F + RAM) Bankswitching */
-void emulate_3E_cartridge(int, bool);
+void emulate_3E_cartridge(CART_TYPE *cart_type);
+// multicore wrapper
+void _emulate_3E_cartridge(void);
 
 /* 3E+ Bankswitching by Thomas Jentzsch */
-void emulate_3EPlus_cartridge(int, bool);
+void emulate_3EPlus_cartridge(CART_TYPE *cart_type);
+// multicore wrapper
+void _emulate_3EPlus_cartridge(void);
 
 /* E0 Bankswitching */
 void emulate_E0_cartridge();
+// multicore wrapper
+void _emulate_E0_cartridge();
 
 void emulate_0840_cartridge();
+// multicore wrapper
+void _emulate_0840_cartridge();
 
 /* CommaVid Cartridge*/
 void emulate_CV_cartridge();
+// multicore wrapper
+void _emulate_CV_cartridge();
 
 /* F0 Bankswitching */
 void emulate_F0_cartridge();
+// multicore wrapper
+void _emulate_F0_cartridge();
 
 /* E7 Bankswitching */
-void emulate_E7_cartridge(int, bool);
+void emulate_E7_cartridge(CART_TYPE *cart_type);
+// multicore wrapper
+void _emulate_E7_cartridge(void);
 
 /* DPC (Pitfall II) Bankswitching */
 void emulate_DPC_cartridge(uint32_t);
+// multicore wrapper
+void _emulate_DPC_cartridge(void);
 
 /* Pink Panther */
 void emulate_pp_cartridge(uint8_t* ram);
+// multicore wrapper
+void _emulate_pp_cartridge(void);
 
 #endif // CARTRIDGE_EMULATION_H

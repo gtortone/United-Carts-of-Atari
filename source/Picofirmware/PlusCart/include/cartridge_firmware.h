@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "global.h"
+#include "menu.h"
 
 #include "cartridge_io.h"
 
@@ -15,35 +16,6 @@
 #define CART_CMD_PAGE_DOWN	0x10     // previous page request (page--)
 #define CART_CMD_PAGE_UP	0x20     // next page request (page++)
 #define CART_CMD_START_CART	0x30     // Menu ready for reboot into selected ROM
-
-enum TV_MODE {
-	TV_MODE_UNKNOWN,
-
-	TV_MODE_NTSC,		TV_MODE_DEFAULT = 1,
-	TV_MODE_PAL,
-	TV_MODE_PAL60,
-
-	TV_MODE_MAX
-
-};
-
-enum FONT_TYPE {
-	FONT_TJZ,
-	FONT_AD,
-	FONT_MORGAN,
-	FONT_GLACIER,		FONT_DEFAULT = 3,
-
-	FONT_MAX
-
-};
-
-enum SPACING {
-	SPACING_DENSE,
-	SPACING_REGULAR,	SPACING_DEFAULT = 1,
-	SPACING_SPARSE,
-
-	SPACING_MAX
-};
 
 void set_tv_mode(int tv_mode);
 

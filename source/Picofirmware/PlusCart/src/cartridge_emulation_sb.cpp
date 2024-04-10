@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
+#include "menu.h"
 #include "cartridge_emulation.h"
 #include "cartridge_setup.h"
 #include "cartridge_emulation_sb.h"

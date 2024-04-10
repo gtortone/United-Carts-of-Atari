@@ -11,6 +11,7 @@
 #endif
 #include "flash.h"
 
+#include "menu.h"
 #include "cartridge_io.h"
 #include "cartridge_emulation.h"
 #include "cartridge_emulation_ar.h"
@@ -162,6 +163,29 @@ static void load_multiload(uint8_t *ram, uint8_t *rom, uint8_t physical_index, c
 	rom[0x7f1] = 0x9c;
 	rom[0x7f2] = header->entry_lo;
 	rom[0x7f3] = header->entry_hi;
+}
+
+// multicore wrapper
+void _emulate_ar_cartridge(void) {
+   uint32_t addr;
+
+   queue_remove_blocking(&qargs, &addr);
+   char* cartridge_path = (char *) (addr);
+
+   queue_remove_blocking(&qargs, &addr);
+   unsigned int* image_size = (unsigned int *) (addr);
+
+   queue_remove_blocking(&qargs, &addr);
+   uint8_t* buffer = (uint8_t *) (addr);
+
+   queue_remove_blocking(&qargs, &addr);
+   uint8_t * tvmode = (uint8_t *) (addr);
+
+   queue_remove_blocking(&qargs, &addr);
+   MENU_ENTRY *d = (MENU_ENTRY *) (addr);
+
+   emulate_ar_cartridge((const char *) cartridge_path, *image_size, buffer, *tvmode, d);
+   queue_add_blocking(&qprocs, &emuexit);
 }
 
 void __time_critical_func(emulate_ar_cartridge)(const char* cartridge_path, unsigned int image_size, uint8_t* buffer, int tv_mode, MENU_ENTRY *d) {
