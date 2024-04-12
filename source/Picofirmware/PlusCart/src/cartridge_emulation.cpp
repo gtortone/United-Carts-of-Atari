@@ -58,7 +58,6 @@ void _emulate_standard_cartridge(void) {
    queue_remove_blocking(&qargs, &addr);
    CART_TYPE *cart_type = (CART_TYPE *) (addr);
    emulate_standard_cartridge(cart_type);
-   queue_add_blocking(&qprocs, &emuexit);
 }
 
 void __time_critical_func(emulate_standard_cartridge)(CART_TYPE *cart_type) {
@@ -113,12 +112,13 @@ void __time_critical_func(emulate_standard_cartridge)(CART_TYPE *cart_type) {
 					SET_DATA_MODE_IN
 				} else if(addr == 0x1ff1) { // write to send Buffer and start Request !!
 					while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
-					if(uart_state == No_Transmission) {
-						uart_state = Send_Start;
-                  queue_try_add(&qprocs, &sendstart);
-               }
+               //FIXME
 					out_buffer[out_buffer_write_pointer] = data_prev;
+					if(uart_state == No_Transmission)
+						uart_state = Send_Start;
 				} else if(addr == 0x1ff3) { // read receive Buffer length
+               //FIXME
+               uart_state = No_Transmission;
 					DATA_OUT(receive_buffer_write_pointer - receive_buffer_read_pointer);
 					SET_DATA_MODE_OUT
 					// wait for address bus to change
@@ -170,6 +170,11 @@ void __time_critical_func(emulate_standard_cartridge)(CART_TYPE *cart_type) {
 	}  // end while
 
    restore_interrupts(irqstatus);
+
+   if(cart_type->withPlusFunctions) 
+      uart_state = Close_Rom;
+   else
+      queue_add_blocking(&qprocs, &emuexit);
 
 	exit_cartridge(addr, addr_prev);
 }

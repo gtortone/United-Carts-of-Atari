@@ -888,11 +888,23 @@ void emulate_cartridge(CART_TYPE cart_type, MENU_ENTRY *d)
    // reset core1
    multicore_reset_core1();
 
+#if USE_WIFI
 	if (cart_type.withPlusFunctions == true ){
  		// Read path and hostname in ROM File from where NMI points to till '\0' and
 		// copy to http_request_header
-#if USE_WIFI
 		esp8266_PlusROM_API_connect(cart_size_bytes);
+
+      // deinit ESP UART from using stream Serial
+      espSerial.end();
+
+      // init ESP UART with pico-sdk UART
+      gpio_set_function(ESP_UART_RX, GPIO_FUNC_UART);
+      gpio_set_function(ESP_UART_TX, GPIO_FUNC_UART);
+      // uart_init always enables the FIFOs, and configures the UART as 8N1
+      uart_init(uart0, ESP_UART_BAUDRATE);
+
+      // reset UART state
+      uart_state = No_Transmission;
 #endif
 	}
 
@@ -1043,6 +1055,12 @@ void emulate_cartridge(CART_TYPE cart_type, MENU_ENTRY *d)
 
       // handle ESP - ROM communication
       handle_plusrom_comms();
+     
+      // (re-)init ESP UART with stream Serial
+      uart_deinit(uart0);
+      espSerial.setFIFOSize(WIFIESPAT_CLIENT_RX_BUFFER_SIZE);
+      espSerial.begin(ESP_UART_BAUDRATE, SERIAL_8N1);
+      esp8266_init();
 
    } else {
 #endif
@@ -1056,19 +1074,6 @@ void emulate_cartridge(CART_TYPE cart_type, MENU_ENTRY *d)
 
 #if USE_WIFI
    } 
-#endif
-
-#if USE_WIFI
-	if (cart_type.withPlusFunctions)
-      // without reset pin...
-      /*
-      sleep_ms(1500);
-      sendCommand("+");
-      sendCommand("+");
-      sendCommand("+");
-      sleep_ms(1500);
-      */
-      esp8266_init();
 #endif
 
 }

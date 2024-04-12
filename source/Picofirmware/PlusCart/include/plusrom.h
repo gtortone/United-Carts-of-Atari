@@ -11,7 +11,8 @@ enum Transmission_State{
    Receive_Header,
    Receive_Length,
    Receive_Content,
-   Receive_Finished
+   Receive_Finished,
+   Close_Rom
 };
 
 extern volatile uint8_t receive_buffer_read_pointer, receive_buffer_write_pointer; \
