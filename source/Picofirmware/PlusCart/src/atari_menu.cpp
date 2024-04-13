@@ -44,7 +44,13 @@ MENU_ENTRY* generateSystemInfo(MENU_ENTRY *dst, int* num_menu_entries, char *inp
    make_menu_entry(&dst, "Pico Firmware      " VERSION, Leave_Menu, num_menu_entries);
 
 #if USE_WIFI
+   uint8_t mac[6];
+   WiFi.macAddress(mac);
    sprintf(input_field, "WiFi Firmware      %s", esp8266_at_version);
+   make_menu_entry(&dst, input_field, Leave_Menu, num_menu_entries);
+   make_menu_entry(&dst, "WiFi MAC address", Leave_Menu, num_menu_entries);
+   sprintf(input_field, "        %X:%X:%X:%X:%X:%X", 
+         mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
    make_menu_entry(&dst, input_field, Leave_Menu, num_menu_entries);
 #endif
 
