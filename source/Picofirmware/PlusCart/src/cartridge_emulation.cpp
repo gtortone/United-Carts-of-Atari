@@ -112,12 +112,10 @@ void __time_critical_func(emulate_standard_cartridge)(CART_TYPE *cart_type) {
 					SET_DATA_MODE_IN
 				} else if(addr == 0x1ff1) { // write to send Buffer and start Request !!
 					while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
-               //FIXME
 					out_buffer[out_buffer_write_pointer] = data_prev;
 					if(uart_state == No_Transmission)
 						uart_state = Send_Start;
 				} else if(addr == 0x1ff3) { // read receive Buffer length
-               //FIXME
                uart_state = No_Transmission;
 					DATA_OUT(receive_buffer_write_pointer - receive_buffer_read_pointer);
 					SET_DATA_MODE_OUT
@@ -289,6 +287,7 @@ void __time_critical_func(emulate_FA_cartridge)(CART_TYPE *cart_type)
 						uart_state = Send_Start;
 					out_buffer[out_buffer_write_pointer] = data_prev;
 				}else if(addr == 0x1ff3){ // read receive Buffer length
+               uart_state = No_Transmission;
 					DATA_OUT(receive_buffer_write_pointer - receive_buffer_read_pointer);
 					SET_DATA_MODE_OUT
 					// wait for address bus to change
@@ -343,6 +342,12 @@ void __time_critical_func(emulate_FA_cartridge)(CART_TYPE *cart_type)
 	}
 
    restore_interrupts(irqstatus);
+
+   if(cart_type->withPlusFunctions)
+      uart_state = Close_Rom;
+   else
+      queue_add_blocking(&qprocs, &emuexit);
+
 	exit_cartridge(addr, addr_prev);
 }
 
@@ -655,6 +660,7 @@ void __time_critical_func(emulate_3E_cartridge)(CART_TYPE *cart_type)
 						uart_state = Send_Start;
 					out_buffer[out_buffer_write_pointer] = data_prev;
 				}else if(addr == 0x1ff3){ // read receive Buffer length
+               uart_state = No_Transmission;
 					DATA_OUT(receive_buffer_write_pointer - receive_buffer_read_pointer);
 					SET_DATA_MODE_OUT
 					// wait for address bus to change
@@ -721,6 +727,12 @@ void __time_critical_func(emulate_3E_cartridge)(CART_TYPE *cart_type)
 	}
 
    restore_interrupts(irqstatus);
+
+   if(cart_type->withPlusFunctions)
+      uart_state = Close_Rom;
+   else
+      queue_add_blocking(&qprocs, &emuexit);
+
 	exit_cartridge(addr, addr_prev);
 }
 
@@ -787,6 +799,7 @@ void __time_critical_func(emulate_3EPlus_cartridge)(CART_TYPE *cart_type)
 						uart_state = Send_Start;
 					out_buffer[out_buffer_write_pointer] = data_prev;
 				}else if(addr == 0x1ff3){ // read receive Buffer length
+               uart_state = No_Transmission;
 					DATA_OUT(receive_buffer_write_pointer - receive_buffer_read_pointer);
 					SET_DATA_MODE_OUT
 					// wait for address bus to change
@@ -848,6 +861,12 @@ void __time_critical_func(emulate_3EPlus_cartridge)(CART_TYPE *cart_type)
 	}
 
    restore_interrupts(irqstatus);
+
+   if(cart_type->withPlusFunctions)
+      uart_state = Close_Rom;
+   else
+      queue_add_blocking(&qprocs, &emuexit);
+
 	exit_cartridge(addr, addr_prev);
 }
 
@@ -1210,6 +1229,7 @@ void __time_critical_func(emulate_E7_cartridge)(CART_TYPE *cart_type)
 							uart_state = Send_Start;
 						out_buffer[out_buffer_write_pointer] = data_prev;
 					}else if(addr == 0x1ff3){ // read receive Buffer length
+                  uart_state = No_Transmission;
 						DATA_OUT(receive_buffer_write_pointer - receive_buffer_read_pointer);
 						SET_DATA_MODE_OUT
 						// wait for address bus to change
@@ -1302,6 +1322,12 @@ void __time_critical_func(emulate_E7_cartridge)(CART_TYPE *cart_type)
 	}
 
    restore_interrupts(irqstatus);
+
+   if(cart_type->withPlusFunctions)
+      uart_state = Close_Rom;
+   else
+      queue_add_blocking(&qprocs, &emuexit);
+
 	exit_cartridge(addr, addr_prev);
 }
 
