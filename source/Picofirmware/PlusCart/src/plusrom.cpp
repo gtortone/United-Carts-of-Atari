@@ -5,11 +5,6 @@
 
 #if USE_WIFI
 
-#define UART_DR            uart0_hw->dr
-#define UART_RX_AVAIL      !(uart0_hw->fr & UART_UARTFR_RXFE_BITS)
-#define UART_TX_BUSY       (uart0_hw->fr & UART_UARTFR_BUSY_BITS)
-#define UART_FIFO_TX_FULL  (uart0_hw->fr & UART_UARTFR_TXFF_BITS)
-
 volatile uint8_t __not_in_flash() receive_buffer_write_pointer, receive_buffer_read_pointer;
 volatile uint8_t __not_in_flash() out_buffer_write_pointer, out_buffer_send_pointer;
 uint8_t __not_in_flash() receive_buffer[256], out_buffer[256];
@@ -17,7 +12,9 @@ volatile uint8_t content_counter = 0;
 volatile uint8_t prev_c = 0, prev_prev_c = 0, c = 0, len = 0;
 volatile uint16_t i;
 volatile uint16_t content_len;
-volatile enum Transmission_State __not_in_flash() uart_state;
+volatile enum Transmission_State __not_in_flash() uart_state = No_Transmission;
+volatile int content_length_pos;
+volatile int16_t http_header_length;
 
 void handle_plusrom_comms(void) {
 
@@ -36,8 +33,11 @@ void handle_plusrom_comms(void) {
 
    while(true) {
 
+      //FIXME
+      /*
       if(uart_state == Close_Rom)
          break;
+      */
 
       if(uart_state == No_Transmission)
          continue;

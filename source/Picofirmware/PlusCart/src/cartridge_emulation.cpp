@@ -87,6 +87,14 @@ void __time_critical_func(emulate_standard_cartridge)(CART_TYPE *cart_type) {
       highBS = 0x1FEF;
    }
 
+   http_header_length = strlen(http_request_header);
+   content_length_pos = http_header_length - 5; 
+
+   // init variables
+   out_buffer_write_pointer = 0, out_buffer_send_pointer = 0;
+   receive_buffer_write_pointer = 0, receive_buffer_read_pointer = 0, content_counter = 0;
+   i = c = prev_c = prev_prev_c = 0;
+
 	if (!reboot_into_cartridge()) return;
 
    uint32_t irqstatus = save_and_disable_interrupts();
@@ -112,13 +120,12 @@ void __time_critical_func(emulate_standard_cartridge)(CART_TYPE *cart_type) {
 					SET_DATA_MODE_IN
 				} else if(addr == 0x1ff1) { // write to send Buffer and start Request !!
 					while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
-               //FIXME
-					out_buffer[out_buffer_write_pointer] = data_prev;
 					if(uart_state == No_Transmission)
 						uart_state = Send_Start;
+					out_buffer[out_buffer_write_pointer] = data_prev;
 				} else if(addr == 0x1ff3) { // read receive Buffer length
                //FIXME
-               uart_state = No_Transmission;
+               //uart_state = No_Transmission;
 					DATA_OUT(receive_buffer_write_pointer - receive_buffer_read_pointer);
 					SET_DATA_MODE_OUT
 					// wait for address bus to change
@@ -149,7 +156,7 @@ void __time_critical_func(emulate_standard_cartridge)(CART_TYPE *cart_type) {
 					DATA_OUT(bankPtr[addr&0xFFF]);
 					SET_DATA_MODE_OUT
 					// wait for address bus to change
-					while (ADDR_IN == addr){ }
+					while (ADDR_IN == addr) { process_transmission(); }
 					SET_DATA_MODE_IN
 				}
 #if USE_WIFI
@@ -164,16 +171,17 @@ void __time_critical_func(emulate_standard_cartridge)(CART_TYPE *cart_type) {
 				while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
 				joy_status = !(data_prev & 0x80);
 			} else if(cart_type->withPlusFunctions) {
-				while (ADDR_IN == addr) { }
+				while (ADDR_IN == addr) { process_transmission(); }
 			}
 		}
 	}  // end while
 
    restore_interrupts(irqstatus);
 
+   /*
    if(cart_type->withPlusFunctions) 
       uart_state = Close_Rom;
-   else
+   else */
       queue_add_blocking(&qprocs, &emuexit);
 
 	exit_cartridge(addr, addr_prev);
@@ -322,7 +330,7 @@ void __time_critical_func(emulate_FA_cartridge)(CART_TYPE *cart_type)
 					DATA_OUT(bankPtr[addr&0xFFF]);
 					SET_DATA_MODE_OUT
 					// wait for address bus to change
-					while (ADDR_IN == addr){ }
+					while (ADDR_IN == addr){ process_transmission(); }
 					SET_DATA_MODE_IN
 				}
 #if USE_WIFI
@@ -337,7 +345,7 @@ void __time_critical_func(emulate_FA_cartridge)(CART_TYPE *cart_type)
 				while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
 				joy_status = !(data_prev & 0x80);
 			}else if(cart_type->withPlusFunctions){
-				while (ADDR_IN == addr) { }
+				while (ADDR_IN == addr) { process_transmission(); }
 			}
 		}
 	}
@@ -687,7 +695,7 @@ void __time_critical_func(emulate_3E_cartridge)(CART_TYPE *cart_type)
 					DATA_OUT(data);
 					SET_DATA_MODE_OUT
 					// wait for address bus to change
-					while (ADDR_IN == addr){ }
+					while (ADDR_IN == addr){ process_transmission(); }
 					SET_DATA_MODE_IN
 				}
 #if USE_WIFI
@@ -715,6 +723,7 @@ void __time_critical_func(emulate_3E_cartridge)(CART_TYPE *cart_type)
 				joy_status = !(data_prev & 0x80);
 			}else if(cart_type->withPlusFunctions){
 				while (ADDR_IN == addr) {
+               process_transmission();
 				}
 			}
 		}
@@ -815,7 +824,7 @@ void __time_critical_func(emulate_3EPlus_cartridge)(CART_TYPE *cart_type)
 
 					SET_DATA_MODE_OUT
 					// wait for address bus to change
-					while (ADDR_IN == addr){ }
+					while (ADDR_IN == addr){  process_transmission(); }
 					SET_DATA_MODE_IN
 				}
 
@@ -842,7 +851,7 @@ void __time_critical_func(emulate_3EPlus_cartridge)(CART_TYPE *cart_type)
 				while (ADDR_IN == addr) { data_prev = data; data = DATA_IN;}
 				joy_status = !(data_prev & 0x80);
 			}else if(cart_type->withPlusFunctions){
-				while (ADDR_IN == addr){ }
+				while (ADDR_IN == addr){ process_transmission(); }
 			}
 		}
 	}
@@ -1256,7 +1265,7 @@ void __time_critical_func(emulate_E7_cartridge)(CART_TYPE *cart_type)
 					DATA_OUT(fixedPtr[addr&0x7FF]);
 					SET_DATA_MODE_OUT
 					// wait for address bus to change
-					while (ADDR_IN == addr){ }
+					while (ADDR_IN == addr){ process_transmission(); }
 					SET_DATA_MODE_IN
 				}
 			}
@@ -1283,7 +1292,7 @@ void __time_critical_func(emulate_E7_cartridge)(CART_TYPE *cart_type)
 					DATA_OUT(bankPtr[addr&0x7FF]);
 					SET_DATA_MODE_OUT
 					// wait for address bus to change
-					while (ADDR_IN == addr){ }
+					while (ADDR_IN == addr){ process_transmission(); }
 					SET_DATA_MODE_IN
 				}
 			}
@@ -1296,7 +1305,7 @@ void __time_critical_func(emulate_E7_cartridge)(CART_TYPE *cart_type)
 				while (ADDR_IN == addr) { data_prev = data; data = DATA_IN; }
 				joy_status = !(data_prev & 0x80);
 			} else if(cart_type->withPlusFunctions){
-				while (ADDR_IN == addr){ }
+				while (ADDR_IN == addr){ process_transmission(); }
 			}
 		}
 	}

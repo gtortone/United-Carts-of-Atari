@@ -889,10 +889,11 @@ void emulate_cartridge(CART_TYPE cart_type, MENU_ENTRY *d)
    multicore_reset_core1();
 
 #if USE_WIFI
-	if (cart_type.withPlusFunctions == true ){
+	if (cart_type.withPlusFunctions == true ) {
  		// Read path and hostname in ROM File from where NMI points to till '\0' and
 		// copy to http_request_header
 		esp8266_PlusROM_API_connect(cart_size_bytes);
+
 
       // deinit ESP UART from using stream Serial
       espSerial.end();
@@ -907,6 +908,45 @@ void emulate_cartridge(CART_TYPE cart_type, MENU_ENTRY *d)
       uart_state = No_Transmission;
 #endif
 	}
+
+// TEST code for process_transition // 
+/*
+   http_header_length = strlen(http_request_header);
+   content_length_pos = http_header_length - 5;
+
+   // init variables
+   out_buffer_write_pointer = 0, out_buffer_send_pointer = 0;
+   receive_buffer_write_pointer = 0, receive_buffer_read_pointer = 0, content_counter = 0;
+   i = c = prev_c = prev_prev_c = 0;
+
+   enum Transmission_State last_uart_state;
+   last_uart_state = uart_state = Send_Start;
+
+   while(uart_state != No_Transmission) {
+
+      process_transmission();
+
+      if(uart_state != last_uart_state) {
+         dbg("uart_state: %d\r\n", uart_state);
+         last_uart_state = uart_state;
+      }
+   }
+
+   dbg("done\r\n");
+
+   dbg("http_request_header: %s\r\n", http_request_header);
+   dbg("len: %d\r\n", strlen(http_request_header)); 
+   
+   dbg("receive_buffer_read_pointer: %d, receive_buffer_write_pointer: %d\r\n", 
+          receive_buffer_read_pointer, receive_buffer_write_pointer);
+   dbg("receive_buffer:\r\n");
+   for(int x=0; x<len; x++)
+      dbg("b%d) 0x%X\r\n", x, receive_buffer[x]);
+
+   // loop...
+   while(1) ;
+   
+*/
 
 	if (cart_type.base_type == base_type_2K) {
 		memcpy(buffer+0x800, buffer, 0x800);
@@ -1053,9 +1093,11 @@ void emulate_cartridge(CART_TYPE cart_type, MENU_ENTRY *d)
 #if USE_WIFI
    if(cart_type.withPlusFunctions) {
 
+      //FIXME
       // handle ESP - ROM communication
-      handle_plusrom_comms();
-     
+      //handle_plusrom_comms();
+      queue_remove_blocking(&qprocs, &flag);
+
       // (re-)init ESP UART with stream Serial
       uart_deinit(uart0);
       espSerial.setFIFOSize(WIFIESPAT_CLIENT_RX_BUFFER_SIZE);
