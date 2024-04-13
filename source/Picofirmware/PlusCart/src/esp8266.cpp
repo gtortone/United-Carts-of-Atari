@@ -321,11 +321,9 @@ void esp8266_init() {
 
    WiFi.init(espSerial, ESP_RESET_PIN);
 
-   //FIXME 
-   // ESP32-C3 takes more time to bring-up wifi...
    do{
       sleep_ms(1000);
-   } while(esp8266_is_connected() == false && count++ < 20);
+   } while(esp8266_is_connected() == false && count++ < 10);
 }
 
 #if 0
