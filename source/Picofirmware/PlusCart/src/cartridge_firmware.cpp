@@ -56,7 +56,7 @@ inline void add_wsync();
 inline void add_normal_top(uint8_t colour);
 inline void add_exit_kernel();
 
-const uint8_t start_bank[] = {
+const uint8_t __in_flash("start_bank") start_bank[] = {
 #define PATCH_START_BANK 8
 
 		0xd8,					// cld
@@ -66,7 +66,7 @@ const uint8_t start_bank[] = {
 
 		};
 
-const uint8_t end_bank[] = {
+const uint8_t __in_flash("end_bank") end_bank[] = {
 
 		0x8d, 0xf4, 0xff,		// sta HOTSPOT
 		0x4c, 0x6B, 0x10,		// jmp DoStart					???
@@ -77,12 +77,12 @@ const uint8_t end_bank[] = {
 		0x0a, 0x10,				// .word FirstStart
 	};
 
-const uint8_t switch_bank[] = {
+const uint8_t __in_flash("switch_bank") switch_bank[] = {
 
 		0x4c, 0x07, 0x10		// jmp SwitchBank
 	};
 
-const uint8_t mac_kernel_a_both[] = {
+const uint8_t __in_flash("mack_kernel_a_both") mac_kernel_a_both[] = {
 
 		0xea,					// nop
 		0xea,					// nop
@@ -93,7 +93,7 @@ const uint8_t mac_kernel_a_both[] = {
 		0xea					// nop
 	};
 
-const uint8_t mac_kernel_a[] = {
+const uint8_t __in_flash("mack_kernel_a") mac_kernel_a[] = {
 		0x04, 0x00,				// nop 0			SLEEP 13
 		0xea,					// nop
 		0xea,					// nop
@@ -102,7 +102,7 @@ const uint8_t mac_kernel_a[] = {
 		0xea					// nop
 	};
 
-const uint8_t mac_kernel_b_both[] = {
+const uint8_t __in_flash("mack_kernel_b_both") mac_kernel_b_both[] = {
 
 		0x85, 0x2a,				// sta HMOVE
 		0x85, 0x10,				// sta RESP0
@@ -116,7 +116,7 @@ const uint8_t mac_kernel_b_both[] = {
 		0xea					// nop
 	};
 
-const uint8_t kernel_a[] = {
+const uint8_t __in_flash("kernel_a") kernel_a[] = {
 
 #define PATCH_A_1	1
 #define PATCH_A_2 	3
@@ -152,7 +152,7 @@ const uint8_t kernel_a[] = {
 		0x85, 0x10				// sta RESP0
 	};
 
-const uint8_t kernel_b[] = {
+const uint8_t __in_flash("kernel_b") kernel_b[] = {
 
 #define PATCH_B_1 	1
 #define PATCH_B_2	3
@@ -187,7 +187,7 @@ const uint8_t kernel_b[] = {
 		0x8d, 0x10, 0x00		// sta.w RESP0
 	};
 
-const uint8_t header_bottom[] = {
+const uint8_t __in_flash("header_bottom") header_bottom[] = {
 #define PATCH_HEADER_BOTTOM_BACKGROUND_COLOUR2 11
 
 		0xa9, 0x00,				// lda #0
@@ -201,7 +201,7 @@ const uint8_t header_bottom[] = {
 		0x85, 0x09,				// sta COLUBK
 	};
 
-const uint8_t normal_bottom[] = {
+const uint8_t __in_flash("normal_bottom") normal_bottom[] = {
 #define PATCH_NORMAL_BOTTOM_LINE 9
 
 		0xa9, 0x00,				// lda #0
@@ -212,17 +212,17 @@ const uint8_t normal_bottom[] = {
 		0xa5, PATCH,			// lda LineBackColor+{1}
 	};
 
-const uint8_t normal_bottom2[] = {
+const uint8_t __in_flash("normal_bottom2") normal_bottom2[] = {
 
 		0x85, 0x09,				// sta COLUBK
 	};
 
-const uint8_t wsync[] = {
+const uint8_t __in_flash("wsync") wsync[] = {
 
 		0x85, 0x02// sta WSYNC
 	};
 
-const uint8_t text_colour[] = {
+const uint8_t __in_flash("text_colour") text_colour[] = {
 #define PATCH_TEXT_COLOUR 1
 
 		0xa9, 0x00,				// lda #??			 (*** PATCHED ***)
@@ -235,7 +235,7 @@ const uint8_t text_colour[] = {
 		0x85, 0x02				// sta WSYNC
 	};
 
-const uint8_t normal_top[] = {
+const uint8_t __in_flash("normal_top") normal_top[] = {
 #define PATCH_NORMAL_TOP_TEXT_COLOUR 1
 
 		0xa9, PATCH,			// lda #{1}			(*** PATCHED ***)
@@ -243,7 +243,7 @@ const uint8_t normal_top[] = {
 		0x85, 0x07,				// sta COLUP1
 	};
 
-const uint8_t exit_kernel[] = {
+const uint8_t __in_flash("exit_kernel") exit_kernel[] = {
 #define PATCH_EXIT_BG 1
 // bottom of screen, switch BG to black after bottom of last menu line
 
@@ -252,7 +252,7 @@ const uint8_t exit_kernel[] = {
 		0x4c, 0x00, 0x10		// jmp ExitKernel
 	};
 
-const uint8_t zeroSprites[] = {
+const uint8_t __in_flash("zeroSprites") zeroSprites[] = {
 		0xa2, 0x00,				// ldx #0
 		0x86, 0x1b,				// stx GRP0
 		0x86, 0x1c,				// stx GRP1
@@ -281,7 +281,7 @@ uint8_t *bufferp;
 // E			YELLOW		WHITE
 // F			ORANGE		WHITE
 
-const uint8_t textColour[2][14] = {
+const uint8_t __in_flash("textColour") textColour[2][14] = {
 
 {	// NTSC...
 

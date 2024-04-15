@@ -19,7 +19,7 @@ volatile uint16_t i;
 volatile uint16_t content_len;
 volatile enum Transmission_State __not_in_flash() uart_state;
 
-void handle_plusrom_comms(void) {
+void __time_critical_func(handle_plusrom_comms)(void) {
 
    int16_t http_header_length;
    int content_length_pos;

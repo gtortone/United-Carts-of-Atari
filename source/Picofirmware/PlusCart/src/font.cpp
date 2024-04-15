@@ -2,7 +2,7 @@
 #include "font.h"
 
 // Translate ASCII character to local character. Index with ASCII-LOWEST_ASCII_CHAR
-const uint16_t xlateAsciiToCharNumber[][HIGHEST_ASCII_CHAR - LOWEST_ASCII_CHAR + 1] = {
+const uint16_t __in_flash("xlateAsciiToCharNumber") xlateAsciiToCharNumber[][HIGHEST_ASCII_CHAR - LOWEST_ASCII_CHAR + 1] = {
 
 	{ // SMALL CAPS
 
