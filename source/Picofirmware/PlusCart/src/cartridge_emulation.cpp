@@ -41,8 +41,6 @@ void exit_cartridge(uint16_t addr, uint16_t addr_prev) {
    DATA_OUT(0x00);                  // (BRK)
 
    while(ADDR_IN == addr);
-
-   emulate_firmware_cartridge();
 }
 
 /* 'Standard' Bankswitching

@@ -16,11 +16,8 @@ enum Transmission_State {
 };
 
 extern volatile uint8_t receive_buffer_read_pointer, receive_buffer_write_pointer;
-\
 extern volatile uint8_t out_buffer_write_pointer, out_buffer_send_pointer;
-\
 extern uint8_t receive_buffer[256], out_buffer[256];
-\
 extern volatile enum Transmission_State uart_state;
 
 void handle_plusrom_comms(void);
