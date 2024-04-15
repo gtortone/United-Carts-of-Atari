@@ -14,6 +14,11 @@
 // Used to control exit function
 extern uint16_t EXIT_SWCHB_ADDR;
 
+extern volatile uint16_t* const ADDR_IDR;
+extern volatile uint8_t* const DATA_IDR;
+extern volatile uint8_t* const DATA_ODR;
+extern volatile uint16_t* const DATA_MODER;
+
 #define ADDR_GPIO_MASK  (0xFFF << PINROMADDR)
 #define A12_GPIO_MASK   (0x1 << PINENABLE)
 #define DATA_GPIO_MASK  (0xFF << PINROMDATA)

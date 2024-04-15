@@ -149,8 +149,7 @@ const uint8_t ReverseByte[] = {
    0x0f, 0x8f, 0x4f, 0xcf, 0x2f, 0xaf, 0x6f, 0xef,	0x1f, 0x9f, 0x5f, 0xdf, 0x3f, 0xbf, 0x7f, 0xff,
 };
 
-__attribute__((section(".time_critical.")))
-void InjectRomByte(uint8_t value) {
+void __time_critical_func(InjectRomByte)(uint8_t value) {
    while(next_address != ADDR_IN)
       ;
 
@@ -159,8 +158,7 @@ void InjectRomByte(uint8_t value) {
    next_address++;
 }
 
-__attribute__((section(".time_critical.")))
-void YieldDataBus(uint16_t address) {
+void __time_critical_func(YieldDataBus)(uint16_t address) {
    while(ADDR_IN != address)
       ;
 
@@ -170,15 +168,13 @@ void YieldDataBus(uint16_t address) {
 static uint8_t opcodeLookup[256]; // Lookup table to quickly map value to stuff to the correct store register instruction
 static uint16_t modeLookup[256]; // Lookup table to quickly map value to stuff to the correct mode, only some bits need to be stuffed
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsCopyOverblankToRiotRam() {
+void __time_critical_func(vcsCopyOverblankToRiotRam)() {
    for(int i = 0; i < sizeof(Overblank); i++) {
       vcsWrite5((uint8_t)(0x80 + i), Overblank[i]);
    }
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsLibInit() {
+void __time_critical_func(vcsLibInit)() {
    // Seed with uninitialized RAM
    srand(*((unsigned int*)rand_seed));
    // Signal ZP load routine to transfer control back to ROM
@@ -194,8 +190,7 @@ void vcsLibInit() {
    vcsStartOverblank();
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsInitBusStuffing() {
+void __time_critical_func(vcsInitBusStuffing)() {
    lowMask = 0xff; // Start with stuffing all bits low
    correctionMaskHi = 0x00;
    correctionMaskLo = 0x00;
@@ -330,8 +325,7 @@ void vcsInitBusStuffing() {
    vcsStartOverblank();
 }
 
-__attribute__((long_call, section(".time_critical.")))
-static void updateLookupTables() {
+static void __time_critical_func(updateLookupTables)() {
    for(int i = 0; i < 256; i++) {
       if(i & correctionMaskHi) {
          opcodeLookup[i] = (i & correctionMaskLo) ? 0x84 : 0x86;
@@ -350,8 +344,7 @@ static void updateLookupTables() {
 }
 
 // Uses Bus-Stuffing, requires A,X,Y to be set via vcsLd*ForBusStuff2() functions prior to use and any time those registers are changed.
-__attribute__((long_call, section(".time_critical.")))
-void vcsWrite3(uint8_t ZP, uint8_t data) {
+void __time_critical_func(vcsWrite3)(uint8_t ZP, uint8_t data) {
    InjectRomByte(opcodeLookup[data]);
    InjectRomByte(ZP);
 
@@ -364,29 +357,25 @@ void vcsWrite3(uint8_t ZP, uint8_t data) {
    SET_DATA_MODE(modeLookup[data]);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsJmp3() {
+void __time_critical_func(vcsJmp3)() {
    InjectRomByte(0x4c);
    InjectRomByte(0x00);
    InjectRomByte(0x10);
    SetNextRomAddress(0x1000);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsLda2(uint8_t data) {
+void __time_critical_func(vcsLda2)(uint8_t data) {
    InjectRomByte(0xa9);
    InjectRomByte(data);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsSta3(uint8_t ZP) {
+void __time_critical_func(vcsSta3)(uint8_t ZP) {
    InjectRomByte(0x85);
    InjectRomByte(ZP);
    YieldDataBus(ZP);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-uint8_t SnoopDataBus(uint16_t address) {
+uint8_t __time_critical_func(SnoopDataBus)(uint16_t address) {
    while(ADDR_IN != address)
       ;
 
@@ -399,47 +388,40 @@ uint8_t SnoopDataBus(uint16_t address) {
    return DATA_IN;
 }
 
-__attribute__((long_call, section(".time_critical.")))
-uint8_t vcsRead4(uint16_t address) {
+uint8_t __time_critical_func(vcsRead4)(uint16_t address) {
    InjectRomByte(0xad);
    InjectRomByte((uint8_t)(address & 0xff));
    InjectRomByte((uint8_t)(address >> 8));
    return SnoopDataBus(address);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsStartOverblank() {
+void __time_critical_func(vcsStartOverblank)() {
    InjectRomByte(0x4c);
    InjectRomByte(0x80);
    InjectRomByte(0x00);
    YieldDataBus(0x0080);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsEndOverblank() {
+void __time_critical_func(vcsEndOverblank)() {
    SetNextRomAddress(0x1fff);
    InjectRomByte(0x00);
    YieldDataBus(0x00ac);
    SetNextRomAddress(0x1000);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsLdaForBusStuff2() {
+void __time_critical_func(vcsLdaForBusStuff2)() {
    vcsLda2(aMask);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsLdxForBusStuff2() {
+void __time_critical_func(vcsLdxForBusStuff2)() {
    vcsLdx2(xMask);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsLdyForBusStuff2() {
+void __time_critical_func(vcsLdyForBusStuff2)() {
    vcsLdy2(yMask);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsWrite5(uint8_t ZP, uint8_t data) {
+void __time_critical_func(vcsWrite5)(uint8_t ZP, uint8_t data) {
    InjectRomByte(0xa9);
    InjectRomByte(data);
    InjectRomByte(0x85);
@@ -447,8 +429,7 @@ void vcsWrite5(uint8_t ZP, uint8_t data) {
    YieldDataBus(ZP);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsWrite6(uint16_t address, uint8_t data) {
+void __time_critical_func(vcsWrite6)(uint16_t address, uint8_t data) {
    InjectRomByte(0xa9);
    InjectRomByte(data);
    InjectRomByte(0x8d);
@@ -457,65 +438,56 @@ void vcsWrite6(uint16_t address, uint8_t data) {
    YieldDataBus(address);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsLdx2(uint8_t data) {
+void __time_critical_func(vcsLdx2)(uint8_t data) {
    InjectRomByte(0xa2);
    InjectRomByte(data);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsLdy2(uint8_t data) {
+void __time_critical_func(vcsLdy2)(uint8_t data) {
    InjectRomByte(0xa0);
    InjectRomByte(data);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsSta4(uint16_t address) {
+void __time_critical_func(vcsSta4)(uint16_t address) {
    InjectRomByte(0x8d);
    InjectRomByte((uint8_t)(address & 0xff));
    InjectRomByte((uint8_t)(address >> 8));
    YieldDataBus(address);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsSax3(uint8_t ZP) {
+void __time_critical_func(vcsSax3)(uint8_t ZP) {
    InjectRomByte(0x87);
    InjectRomByte(ZP);
    YieldDataBus(ZP);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsStx3(uint8_t ZP) {
+void __time_critical_func(vcsStx3)(uint8_t ZP) {
    InjectRomByte(0x86);
    InjectRomByte(ZP);
    YieldDataBus(ZP);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsStx4(uint16_t address) {
+void __time_critical_func(vcsStx4)(uint16_t address) {
    InjectRomByte(0x8e);
    InjectRomByte((uint8_t)(address & 0xff));
    InjectRomByte((uint8_t)(address >> 8));
    YieldDataBus(address);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsSty3(uint8_t ZP) {
+void __time_critical_func(vcsSty3)(uint8_t ZP) {
    InjectRomByte(0x84);
    InjectRomByte(ZP);
    YieldDataBus(ZP);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsSty4(uint16_t address) {
+void __time_critical_func(vcsSty4)(uint16_t address) {
    InjectRomByte(0x8c);
    InjectRomByte((uint8_t)(address & 0xff));
    InjectRomByte((uint8_t)(address >> 8));
    YieldDataBus(address);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsJsr6(uint16_t target) {
+void __time_critical_func(vcsJsr6)(uint16_t target) {
    InjectRomByte(0x20);
    InjectRomByte((uint8_t)(target & 0xff));
 
@@ -529,26 +501,22 @@ void vcsJsr6(uint16_t target) {
    SetNextRomAddress(target & 0x1fff);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsNop2() {
+void __time_critical_func(vcsNop2)() {
    InjectRomByte(0xea);
 }
 
 // Puts nop on bus for n * 2 cycles
 // Use this to perform lengthy calculations
-__attribute__((long_call, section(".time_critical.")))
-void vcsNop2n(uint16_t n) {
+void __time_critical_func(vcsNop2n)(uint16_t n) {
    InjectRomByte(0xea);
    next_address += (uint16_t)(n-1);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsTxs2() {
+void __time_critical_func(vcsTxs2)() {
    InjectRomByte(0x9a);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsPha3() {
+void __time_critical_func(vcsPha3)() {
    InjectRomByte(0x48);
 
    while(ADDR_IN & 0x1e00)
@@ -557,8 +525,7 @@ void vcsPha3() {
    SET_DATA_MODE_IN
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsPhp3() {
+void __time_critical_func(vcsPhp3)() {
    InjectRomByte(0x08);
 
    while(ADDR_IN & 0x1e00)
@@ -567,8 +534,7 @@ void vcsPhp3() {
    SET_DATA_MODE_IN
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsPla4() {
+void __time_critical_func(vcsPla4)() {
    InjectRomByte(0x68);
 
    while(ADDR_IN & 0x1e00)
@@ -577,8 +543,7 @@ void vcsPla4() {
    SET_DATA_MODE_IN
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsPlp4() {
+void __time_critical_func(vcsPlp4)() {
    InjectRomByte(0x28);
 
    while(ADDR_IN & 0x1e00)
@@ -587,8 +552,7 @@ void vcsPlp4() {
    SET_DATA_MODE_IN
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsPla4Ex(uint8_t data) {
+void __time_critical_func(vcsPla4Ex)(uint8_t data) {
    InjectRomByte(0x08);
 
    while(ADDR_IN & 0x1e00)
@@ -600,8 +564,7 @@ void vcsPla4Ex(uint8_t data) {
    //SET_DATA_MODE(0x0555)
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsPlp4Ex(uint8_t data) {
+void __time_critical_func(vcsPlp4Ex)(uint8_t data) {
    InjectRomByte(0x28);
 
    while(ADDR_IN & 0x1e00)
@@ -613,14 +576,12 @@ void vcsPlp4Ex(uint8_t data) {
    //SET_DATA_MODE(0x0555)
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsWaitForAddress(uint16_t address) {
+void __time_critical_func(vcsWaitForAddress)(uint16_t address) {
    while(ADDR_IN != address)
       ;
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void vcsJmpToRam3(uint16_t address) {
+void __time_critical_func(vcsJmpToRam3)(uint16_t address) {
    // JMP address
    InjectRomByte(0x4c);
    InjectRomByte((uint8_t)(address & 0xff));
@@ -628,8 +589,7 @@ void vcsJmpToRam3(uint16_t address) {
    YieldDataBus(address);
 }
 
-__attribute__((long_call, section(".time_critical.")))
-void injectDmaData(int address, int count, const uint8_t* pBuffer) {
+void __time_critical_func(injectDmaData)(int address, int count, const uint8_t* pBuffer) {
    // TODO
 }
 

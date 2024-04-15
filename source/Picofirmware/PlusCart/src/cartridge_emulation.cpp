@@ -9,6 +9,7 @@
  * Cartridge Emulation
  *************************************************************************/
 #include <string.h>
+#include "cartridge_io.h"
 #include "cartridge_detection.h"
 #include "cartridge_emulation.h"
 #include "cartridge_firmware.h"
