@@ -26,8 +26,6 @@
 #define BUFFER_SIZE_KB  96
 #define ERAM_SIZE_KB    64    // extra RAM
 
-//#define FIRMWARE_MAX_RAM  0x1C000
-
 extern char http_request_header[];
 extern uint8_t buffer[];
 extern unsigned int cart_size_bytes;

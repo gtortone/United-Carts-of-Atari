@@ -4,7 +4,9 @@
 #include "atari_menu.h"
 #include "esp8266.h"
 #include "flash.h"
+#if USE_SD_CARD
 #include "sd.h"
+#endif
 #include "cartridge_io.h"
 
 MENU_ENTRY* generateSetupMenu(MENU_ENTRY *dst, int* num_menu_entries) {

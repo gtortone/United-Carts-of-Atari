@@ -6,6 +6,7 @@
 #include "global.h"
 #include "menu.h"
 #include "user_settings.h"
+#include "cartridge_setup.h"
 #include "LittleFS.h"
 #include <EEPROM.h>
 
@@ -26,9 +27,10 @@ void flash_firmware_update(uint32_t)__attribute__((section(".data#")));
 uint32_t flash_check_offline_roms_size(void);
 */
 
-uint32_t flash_download(char *, uint32_t, uint32_t);
+uint32_t flash_download(char *, uint32_t, uint32_t, enum loadMedia);
 void flash_download_at(char *, uint32_t, uint32_t, uint32_t);
-void flash_buffer_at(uint8_t*, uint32_t, uint8_t*);
+void flash_cache_at(char *, uint32_t, uint32_t, uint32_t);
+void flash_copy(char *, uint32_t, uint32_t, uint32_t);
 
 uint32_t flash_file_request(uint8_t *, char *, uint32_t, uint32_t);
 bool flash_has_downloaded_roms(void);

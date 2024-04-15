@@ -204,9 +204,11 @@ void __time_critical_func(emulate_standard_cartridge)(CART_TYPE *cart_type) {
 
    restore_interrupts(irqstatus);
 
+#if USE_WIFI
    if(cart_type->withPlusFunctions)
       uart_state = Close_Rom;
    else
+#endif
       queue_add_blocking(&qprocs, &emuexit);
 
    exit_cartridge(addr, addr_prev);
@@ -416,9 +418,11 @@ void __time_critical_func(emulate_FA_cartridge)(CART_TYPE *cart_type) {
 
    restore_interrupts(irqstatus);
 
+#if USE_WIFI
    if(cart_type->withPlusFunctions)
       uart_state = Close_Rom;
    else
+#endif
       queue_add_blocking(&qprocs, &emuexit);
 
    exit_cartridge(addr, addr_prev);
@@ -850,9 +854,11 @@ void __time_critical_func(emulate_3E_cartridge)(CART_TYPE *cart_type) {
 
    restore_interrupts(irqstatus);
 
+#if USE_WIFI
    if(cart_type->withPlusFunctions)
       uart_state = Close_Rom;
    else
+#endif
       queue_add_blocking(&qprocs, &emuexit);
 
    exit_cartridge(addr, addr_prev);
@@ -1019,9 +1025,11 @@ void __time_critical_func(emulate_3EPlus_cartridge)(CART_TYPE *cart_type) {
 
    restore_interrupts(irqstatus);
 
+#if USE_WIFI
    if(cart_type->withPlusFunctions)
       uart_state = Close_Rom;
    else
+#endif
       queue_add_blocking(&qprocs, &emuexit);
 
    exit_cartridge(addr, addr_prev);
@@ -1549,9 +1557,11 @@ void __time_critical_func(emulate_E7_cartridge)(CART_TYPE *cart_type) {
 
    restore_interrupts(irqstatus);
 
+#if USE_WIFI
    if(cart_type->withPlusFunctions)
       uart_state = Close_Rom;
    else
+#endif
       queue_add_blocking(&qprocs, &emuexit);
 
    exit_cartridge(addr, addr_prev);

@@ -900,7 +900,6 @@ void emulate_cartridge(CART_TYPE cart_type, MENU_ENTRY *d) {
    multicore_reset_core1();
 
 #if USE_WIFI
-
    if(cart_type.withPlusFunctions == true) {
       // Read path and hostname in ROM File from where NMI points to till '\0' and
       // copy to http_request_header
@@ -917,8 +916,8 @@ void emulate_cartridge(CART_TYPE cart_type, MENU_ENTRY *d) {
 
       // reset UART state
       uart_state = No_Transmission;
-#endif
    }
+#endif
 
    if(cart_type.base_type == base_type_2K) {
       memcpy(buffer+0x800, buffer, 0x800);

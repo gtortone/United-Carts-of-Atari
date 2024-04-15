@@ -4,6 +4,10 @@
 #if USE_WIFI
 #include "esp8266.h"
 #endif
+#if USE_SD_CARD
+#include "FatFsSd.h"
+#include "ffconf.h"
+#endif
 #include "flash.h"
 #include "cartridge_firmware.h"
 
@@ -49,10 +53,10 @@ void flash_erase_storage(uint32_t start_addr, uint32_t end_addr) {
    flash_range_erase(start_addr, (end_addr - start_addr));
 }
 
-#if USE_WIFI
+#if USE_WIFI || USE_SD_CARD
 
 /* write to flash with multiple HTTP range requests */
-uint32_t flash_download(char *filename, uint32_t download_size, uint32_t http_range_start) {
+uint32_t flash_download(char *filename, uint32_t download_size, uint32_t http_range_start, enum loadMedia media) {
 
    uint32_t start_address, end_address;
    uint8_t start_sector, end_sector;
@@ -72,7 +76,17 @@ uint32_t flash_download(char *filename, uint32_t download_size, uint32_t http_ra
    flash_erase_storage(start_address, end_address);
    restore_interrupts(irqstatus);
 
-   flash_download_at(filename, download_size, http_range_start, address);
+   if(media == loadMedia::WIFI) {
+#if USE_WIFI
+      flash_download_at(filename, download_size, http_range_start, address);
+#endif
+   } else if(media == loadMedia::SD) { 
+#if USE_SD_CARD
+      flash_cache_at(filename, download_size, http_range_start, address); 
+#endif
+   } else if(media == loadMedia::FLASH) {
+      flash_copy(filename, download_size, http_range_start, address);
+   }
 
    // flash new usersettings
    user_settings.first_free_flash_sector = end_sector + 1;
@@ -80,7 +94,62 @@ uint32_t flash_download(char *filename, uint32_t download_size, uint32_t http_ra
 
    return address;
 }
+#endif
 
+void flash_copy(char *filename, uint32_t download_size, uint32_t start, uint32_t flash_address) {
+
+   File f;
+   uint8_t buf[FLASH_PAGE_SIZE];
+   uint len;
+
+   f = LittleFS.open(&filename[sizeof(MENU_TEXT_OFFLINE_ROMS)], "r");
+   f.seek(start, SeekSet);
+
+   while(f.position() != f.size()) { 
+
+      len = f.readBytes((char *) buf, FLASH_PAGE_SIZE);
+
+      uint32_t irqstatus = save_and_disable_interrupts();
+         flash_range_program(flash_address, buf, len);
+      restore_interrupts(irqstatus);
+
+      flash_address += len;
+   }
+   
+   f.close();
+}
+
+#if USE_SD_CARD
+void flash_cache_at(char *filename, uint32_t download_size, uint32_t start, uint32_t flash_address) {
+
+   FATFS FatFs;
+   FIL f;
+   uint8_t buf[FLASH_PAGE_SIZE];
+   uint len;
+
+   f_mount(&FatFs, "", 1);
+
+   f_open(&f, &filename[sizeof(MENU_TEXT_SD_CARD_CONTENT)], FA_READ);
+   f_lseek(&f, start);
+
+   while(!f_eof(&f)) { 
+
+      f_read(&f, buf, FLASH_PAGE_SIZE, &len);
+
+      uint32_t irqstatus = save_and_disable_interrupts();
+         flash_range_program(flash_address, buf, len);
+      restore_interrupts(irqstatus);
+
+      flash_address += len;
+   }
+   
+   f_close(&f);
+
+   f_mount(0, "", 1);
+}
+#endif
+
+#if USE_WIFI
 void flash_download_at(char *filename, uint32_t download_size, uint32_t http_range_start, uint32_t flash_address) {
 
    WiFiClient plusstore;
@@ -133,20 +202,7 @@ void flash_download_at(char *filename, uint32_t download_size, uint32_t http_ran
 
    plusstore.stop();
 }
-
-//FIXME
-void flash_buffer_at(uint8_t* buffer, uint32_t buffer_size, uint8_t* flash_address) {
-
-   __disable_irq();
-
-   for(int i=0; i<buffer_size; i++) {
-      *(uint8_t*)flash_address = buffer[i];
-
-      flash_address++;
-   }
-
-   __enable_irq();
-}
+#endif
 
 #if 0
 
@@ -246,7 +302,6 @@ void flash_firmware_update(uint32_t filesize) {
    __enable_irq();
    NVIC_SystemReset();
 }
-#endif
 #endif
 
 uint32_t flash_file_request(uint8_t *ext_buffer, char *path, uint32_t start, uint32_t length) {

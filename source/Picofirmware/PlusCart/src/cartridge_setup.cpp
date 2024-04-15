@@ -129,19 +129,20 @@ bool setup_cartridge_image(const char* filename, uint32_t image_size, uint8_t* b
 
       if(d->type == Cart_File) {
 #if USE_WIFI
-         //flash_part_address = flash_download((char *) filename, FLASH_IMAGE_SIZE, FLASH_IMAGE_OFFSET);
-         flash_part_address = flash_download((char *) filename, image_size - ((RAM_BANKS + ERAM_BANKS) * 4096), FLASH_IMAGE_OFFSET);
+         flash_part_address = flash_download((char *) filename, image_size - ((RAM_BANKS + ERAM_BANKS) * 4096), FLASH_IMAGE_OFFSET, loadMedia::WIFI);
 #else
          flash_part_address = 0; // d->type == Cart_File and no WiFi ???
 #endif
       } else if(d->type == SD_Cart_File) {
 #if USE_SD_CARD
-         flash_part_address = 0; // todo read from SD-Card to flash
+         flash_part_address = flash_download((char *) filename, image_size - ((RAM_BANKS + ERAM_BANKS) * 4096), FLASH_IMAGE_OFFSET, loadMedia::SD);
 #else
          flash_part_address = 0; // d->type == SD_Cart_File and no SD-Card ???
 #endif
       } else {
-         flash_part_address = d->flash_base_address + FLASH_IMAGE_OFFSET;
+         // offline ROM
+         // roms on flash are files on filesystem that does not guarantee contiguous allocation
+         flash_part_address = flash_download((char *) filename, image_size - ((RAM_BANKS + ERAM_BANKS) * 4096), FLASH_IMAGE_OFFSET, loadMedia::FLASH);
       }
 
       if(flash_part_address == 0)
