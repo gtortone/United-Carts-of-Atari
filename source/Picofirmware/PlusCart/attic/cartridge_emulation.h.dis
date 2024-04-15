@@ -12,17 +12,17 @@
 
 #define SWCHA          0x280
 
-enum Transmission_State{
-	No_Transmission,
-	Send_Start,
-	Send_Prepare_Header,
-	Send_Header,
-	Send_Content,
-	Send_Finished,
-	Receive_Header,
-	Receive_Length,
-	Receive_Content,
-	Receive_Finished
+enum Transmission_State {
+   No_Transmission,
+   Send_Start,
+   Send_Prepare_Header,
+   Send_Header,
+   Send_Content,
+   Send_Finished,
+   Receive_Header,
+   Receive_Length,
+   Receive_Content,
+   Receive_Finished
 };
 
 #if USE_WIFI
@@ -33,9 +33,9 @@ enum Transmission_State{
    uint8_t prev_c = 0, prev_prev_c = 0, i, c, len; \
    uint16_t content_len; \
    int content_length_pos = header_length - 5; \
-   enum Transmission_State uart_state = No_Transmission; 
+   enum Transmission_State uart_state = No_Transmission;
 #else //Todo make setup_plus_rom_functions empty if no WiFi
-#define setup_plus_rom_functions() 
+#define setup_plus_rom_functions()
 #endif
 
 #if USE_WIFI
@@ -128,7 +128,7 @@ enum Transmission_State{
 #define process_transmission()
 #endif
 
-void exit_cartridge(uint16_t , uint16_t );
+void exit_cartridge(uint16_t, uint16_t);
 
 /* 'Standard' Bankswitching */
 void __time_critical_func(emulate_standard_cartridge)(int, bool, uint16_t, uint16_t, int);

@@ -43,7 +43,7 @@ void __time_critical_func(handle_plusrom_comms)(void) {
          continue;
 
       // send request
-   
+
       //dbg("plusrom - send start\r\n");
       i = 0;
       content_len = out_buffer_write_pointer;
@@ -53,22 +53,27 @@ void __time_critical_func(handle_plusrom_comms)(void) {
          http_request_header[content_length_pos] = (char)'0';
       } else {
          i = content_length_pos;
+
          while(content_len != 0) {
-            c = (uint8_t) (content_len % 10);
-            http_request_header[i--] = (char) (c + '0');
+            c = (uint8_t)(content_len % 10);
+            http_request_header[i--] = (char)(c + '0');
             content_len = content_len/10;
          }
       }
 
       for(int b=0; b<http_header_length; b++) {
          while(UART_FIFO_TX_FULL) { }
+
          UART_DR = http_request_header[b];
       }
+
       for(int b=0; b<(out_buffer_write_pointer - out_buffer_send_pointer + 1); b++) {
-         while(UART_FIFO_TX_FULL) { } 
+         while(UART_FIFO_TX_FULL) { }
+
          UART_DR = out_buffer[out_buffer_send_pointer + b];
       }
-      while(UART_TX_BUSY) { } 
+
+      while(UART_TX_BUSY) { }
 
       out_buffer_write_pointer = 0;
       out_buffer_send_pointer = 0;
@@ -81,7 +86,9 @@ void __time_critical_func(handle_plusrom_comms)(void) {
       while(true) {
          if(!UART_RX_AVAIL)
             continue;
+
          c = (uint8_t) UART_DR;
+
          if(c == '\n' && c == prev_prev_c)
             break;
          else {
@@ -89,15 +96,17 @@ void __time_critical_func(handle_plusrom_comms)(void) {
             prev_c = c;
          }
       }
-       
+
       // read payload len (first byte)
       while(!UART_RX_AVAIL) { }
+
       len = (uint8_t) UART_DR;
 
       // read payload
       if(len != 0) {
          for(int b=0; b<len; b++) {
-            while(!UART_RX_AVAIL) { } 
+            while(!UART_RX_AVAIL) { }
+
             receive_buffer[receive_buffer_write_pointer++] = (uint8_t) UART_DR;
          }
       }
@@ -113,4 +122,3 @@ void __time_critical_func(handle_plusrom_comms)(void) {
    //dbg("plusrom - uart_state after while: %d\r\n", uart_state);
 }
 #endif
-

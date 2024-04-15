@@ -12,11 +12,11 @@
 
 // Circular buffer struct
 typedef struct {
-    uint16_t size;
-    uint16_t rdp;     // READ pointer
-    uint16_t wrp;     // WRITE pointer
-    uint16_t full;    // number of buffer full conditions
-    char data[1024];   // vector of elements
+   uint16_t size;
+   uint16_t rdp;     // READ pointer
+   uint16_t wrp;     // WRITE pointer
+   uint16_t full;    // number of buffer full conditions
+   char data[1024];   // vector of elements
 } CBuffer;
 
 //void cbuffer_alloc(CBuffer *cb, uint16_t size);
@@ -33,4 +33,3 @@ char *cbuffer_dumpdata(CBuffer *cb);
 #endif
 
 // EOF
-

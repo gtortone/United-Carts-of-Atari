@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-enum cart_base_type{
+enum cart_base_type {
    base_type_Load_Failed = -1,
    base_type_None,
    base_type_2K,

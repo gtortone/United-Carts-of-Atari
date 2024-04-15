@@ -99,77 +99,82 @@ void dmauart_stop_rxchan(void) {
 
 bool __time_critical_func(dmauart_read)(uint8_t* data) {
 
-  if(rxbuf == NULL)
-     return false;
+   if(rxbuf == NULL)
+      return false;
 
-  // Update dma index
-  rxbuf_wp = RXBUF_LENGTH - dma_channel_hw_addr(rxchan)->transfer_count;
+   // Update dma index
+   rxbuf_wp = RXBUF_LENGTH - dma_channel_hw_addr(rxchan)->transfer_count;
 
-  if (rxbuf_wp == rxbuf_rp) 
-    return false;
+   if(rxbuf_wp == rxbuf_rp)
+      return false;
 
-  *data = rxbuf[rxbuf_rp];
-  rxbuf_rp = (rxbuf_rp + 1) % RXBUF_LENGTH;
+   *data = rxbuf[rxbuf_rp];
+   rxbuf_rp = (rxbuf_rp + 1) % RXBUF_LENGTH;
 
-  return true;
+   return true;
 }
 
 uint16_t __time_critical_func(dmauart_write)(const uint8_t* data, uint16_t length) {
-  if (length == 0) {
-    return 0;
-  }
-  uint16_t available =
+   if(length == 0) {
+      return 0;
+   }
+
+   uint16_t available =
       (txbuf_rp <= txbuf_wp)
-          ? (TXBUF_LENGTH - 1 + txbuf_rp - txbuf_wp)
-          : (txbuf_rp - txbuf_wp);
-  if (length <= available) {
-    if (txbuf_rp < txbuf_wp) {
-      if ((TXBUF_LENGTH - 1) < txbuf_wp + length) {
-        memcpy(&txbuf[txbuf_wp], data,
-               TXBUF_LENGTH - txbuf_wp);
-        memcpy(txbuf, &data[TXBUF_LENGTH - txbuf_wp],
-               length - (TXBUF_LENGTH - txbuf_wp));
+      ? (TXBUF_LENGTH - 1 + txbuf_rp - txbuf_wp)
+      : (txbuf_rp - txbuf_wp);
+
+   if(length <= available) {
+      if(txbuf_rp < txbuf_wp) {
+         if((TXBUF_LENGTH - 1) < txbuf_wp + length) {
+            memcpy(&txbuf[txbuf_wp], data,
+                   TXBUF_LENGTH - txbuf_wp);
+            memcpy(txbuf, &data[TXBUF_LENGTH - txbuf_wp],
+                   length - (TXBUF_LENGTH - txbuf_wp));
+         } else {
+            memcpy(&txbuf[txbuf_wp], data, length);
+         }
+
       } else {
-        memcpy(&txbuf[txbuf_wp], data, length);
+         if((TXBUF_LENGTH - 1) < txbuf_wp + length) {
+            memcpy(&txbuf[txbuf_wp], data,
+                   TXBUF_LENGTH - txbuf_wp);
+            memcpy(txbuf, &data[TXBUF_LENGTH - txbuf_wp],
+                   length - (TXBUF_LENGTH - txbuf_wp));
+         } else {
+            memcpy(&txbuf[txbuf_wp], data, length);
+         }
       }
 
-    } else {
-      if ((TXBUF_LENGTH - 1) < txbuf_wp + length) {
-        memcpy(&txbuf[txbuf_wp], data,
-               TXBUF_LENGTH - txbuf_wp);
-        memcpy(txbuf, &data[TXBUF_LENGTH - txbuf_wp],
-               length - (TXBUF_LENGTH - txbuf_wp));
-      } else {
-        memcpy(&txbuf[txbuf_wp], data, length);
-      }
-    }
-    txbuf_wp = (txbuf_wp + length) & (TXBUF_LENGTH - 1);
-  } else {  // no enougth space to write
-    // TODO: write as much data as possible
-    return 0;
-  }
+      txbuf_wp = (txbuf_wp + length) & (TXBUF_LENGTH - 1);
+   } else {  // no enougth space to write
+      // TODO: write as much data as possible
+      return 0;
+   }
 
-  return length;
+   return length;
 }
 
 void __time_critical_func(dmauart_flush)(void) {
-  uint size = (txbuf_rp < txbuf_wp)
-                  ? (txbuf_wp - txbuf_rp)
-                  : (TXBUF_LENGTH + txbuf_wp - txbuf_rp);
-  // Size check
-  if (size == 0) {
-    return;
-  }
-  // Busy check
-  while (dma_channel_is_busy(txchan))
-    ;
+   uint size = (txbuf_rp < txbuf_wp)
+               ? (txbuf_wp - txbuf_rp)
+               : (TXBUF_LENGTH + txbuf_wp - txbuf_rp);
 
-  uint8_t* start = &txbuf[txbuf_rp];
-  dma_channel_transfer_from_buffer_now(txchan, start, size);
-  txbuf_rp = (txbuf_rp + size) & (TXBUF_LENGTH - 1);
+   // Size check
+   if(size == 0) {
+      return;
+   }
+
+   // Busy check
+   while(dma_channel_is_busy(txchan))
+      ;
+
+   uint8_t* start = &txbuf[txbuf_rp];
+   dma_channel_transfer_from_buffer_now(txchan, start, size);
+   txbuf_rp = (txbuf_rp + size) & (TXBUF_LENGTH - 1);
 }
 
 void __time_critical_func(dmauart_write_and_flush)(const uint8_t* data, uint16_t length) {
-  dmauart_write(data, length);
-  dmauart_flush();
+   dmauart_write(data, length);
+   dmauart_flush();
 }

@@ -18,7 +18,7 @@ extern queue_t qargs;
 // multicore sync
 extern const uint8_t emuexit, sendstart, recvdone;
 
-void exit_cartridge(uint16_t , uint16_t );
+void exit_cartridge(uint16_t, uint16_t);
 
 /* 'Standard' Bankswitching */
 //void emulate_standard_cartridge(bool, uint16_t, uint16_t, int);

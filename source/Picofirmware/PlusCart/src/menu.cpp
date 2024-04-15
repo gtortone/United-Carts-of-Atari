@@ -42,14 +42,14 @@ const char __in_flash("status_message") *status_message[] = {
    "Enter search details",
    "Search results",
 
-// MENU_TEXT_APPEARANCE,
+   // MENU_TEXT_APPEARANCE,
 };
 
 const uint8_t numMenuItemsPerPage[] = {
-      // ref: SPACING enum
-      14,                           // dense
-      12,                           // medium
-      10                         // sparse
+   // ref: SPACING enum
+   14,                           // dense
+   12,                           // medium
+   10                         // sparse
 };
 
 const char __in_flash("keyboardUppercase") *keyboardUppercase[] = {
@@ -89,11 +89,13 @@ const char __in_flash("keyboards") **keyboards[] = {
 
 char *get_filename_ext(char *filename) {
    char *dot = strrchr(filename, '.');
+
    if(!dot || dot == filename) return (char *)"";
+
    return (dot + 1);
 }
 
-/*inline*/ void make_menu_entry_font( MENU_ENTRY **dst, const char *name, int type, uint8_t font, int* num_menu_entries) {
+/*inline*/ void make_menu_entry_font(MENU_ENTRY **dst, const char *name, int type, uint8_t font, int* num_menu_entries) {
    (*dst)->type = (MENU_ENTRY_Type)type;
    strcpy((*dst)->entryname, name);
    (*dst)->filesize = 0U;
@@ -111,14 +113,19 @@ void make_keyboardFromLine(MENU_ENTRY **dst, char *line, int* num_menu_entries) 
 
    make_menu_entry(dst, MENU_TEXT_GO_BACK, Leave_SubKeyboard_Menu, num_menu_entries);
    char item[33];
-   while (*line) {
+
+   while(*line) {
       char *entry = item;
-      while (*line && *line == ' ')
+
+      while(*line && *line == ' ')
          line++;
-      while (*line && *line != ' ')
+
+      while(*line && *line != ' ')
          *entry++ = *line++;
+
       *entry = 0;
-      if (*item)
+
+      if(*item)
          make_menu_entry(dst, item, Keyboard_Char, num_menu_entries);
    }
 }
@@ -127,17 +134,19 @@ void make_keyboard(MENU_ENTRY **dst, enum keyboardType selector, int* num_menu_e
 
    make_menu_entry(dst, MENU_TEXT_GO_BACK, Leave_Menu, num_menu_entries);
 
-   for (const char **kbRow = keyboards[selector]; *kbRow; kbRow++)
+   for(const char **kbRow = keyboards[selector]; *kbRow; kbRow++)
       make_menu_entry(dst, *kbRow, Keyboard_Row, num_menu_entries);
 
-   if (selector != KEYBOARD_LOWERCASE)
+   if(selector != KEYBOARD_LOWERCASE)
       make_menu_entry(dst, MENU_TEXT_LOWERCASE, Keyboard_Row, num_menu_entries);
-   if (selector != KEYBOARD_UPPERCASE)
+
+   if(selector != KEYBOARD_UPPERCASE)
       make_menu_entry(dst, MENU_TEXT_UPPERCASE, Keyboard_Row, num_menu_entries);
-   if (selector != KEYBOARD_SYMBOLS)
+
+   if(selector != KEYBOARD_SYMBOLS)
       make_menu_entry(dst, MENU_TEXT_SYMBOLS, Keyboard_Row, num_menu_entries);
 
-   if (input_field)
+   if(input_field)
       make_menu_entry(dst, MENU_TEXT_DELETE_CHAR, Delete_Keyboard_Char, num_menu_entries);
 
    make_menu_entry(dst, "Enter", Menu_Action, num_menu_entries);

@@ -34,8 +34,8 @@ extern char esp8266_at_version[];
 extern char http_request_header[];
 
 typedef struct {
-	uint32_t start;
-	uint32_t stop;
+   uint32_t start;
+   uint32_t stop;
 } http_range;
 
 void __in_flash("esp8266_init") esp8266_init(void);
@@ -52,10 +52,10 @@ int __in_flash("esp8266_file_list") esp8266_file_list(char *, MENU_ENTRY **, int
 
 bool __in_flash("esp8266_PlusStore_API_connect") esp8266_PlusStore_API_connect(void);
 void __in_flash("esp8266_PlusStore_API_end_transmission") esp8266_PlusStore_API_end_transmission(void);
-void __in_flash("esp8266_PlusStore_API_prepare_request_header") esp8266_PlusStore_API_prepare_request_header(char *, bool );
+void __in_flash("esp8266_PlusStore_API_prepare_request_header") esp8266_PlusStore_API_prepare_request_header(char *, bool);
 uint16_t __in_flash("esp8266_skip_http_response_header") esp8266_skip_http_response_header(WiFiClient *);
-uint32_t __in_flash("esp8266_PlusStore_API_range_request") esp8266_PlusStore_API_range_request( char *, http_range, uint8_t *);
-uint32_t __in_flash("esp8266_PlusStore_API_file_request") esp8266_PlusStore_API_file_request( uint8_t *, char *, uint32_t, uint32_t );
+uint32_t __in_flash("esp8266_PlusStore_API_range_request") esp8266_PlusStore_API_range_request(char *, http_range, uint8_t *);
+uint32_t __in_flash("esp8266_PlusStore_API_file_request") esp8266_PlusStore_API_file_request(uint8_t *, char *, uint32_t, uint32_t);
 
 int __in_flash("esp8266_PlusROM_API_connect") esp8266_PlusROM_API_connect(unsigned int);
 

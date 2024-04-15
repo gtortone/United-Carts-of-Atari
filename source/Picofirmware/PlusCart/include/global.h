@@ -22,7 +22,7 @@
 #define EMU_PLUSROM_RECVDONE  0x03
 
 // buffers
-#define BUFFER_SIZE     96 
+#define BUFFER_SIZE     96
 #define BUFFER_SIZE_KB  96
 #define ERAM_SIZE_KB    64    // extra RAM
 

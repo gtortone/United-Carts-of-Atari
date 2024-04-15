@@ -13,17 +13,17 @@
 
 #define SWCHA          0x280
 
-enum Transmission_State{
-	No_Transmission,
-	Send_Start,
-	Send_Prepare_Header,
-	Send_Header,
-	Send_Content,
-	Send_Finished,
-	Receive_Header,
-	Receive_Length,
-	Receive_Content,
-	Receive_Finished
+enum Transmission_State {
+   No_Transmission,
+   Send_Start,
+   Send_Prepare_Header,
+   Send_Header,
+   Send_Content,
+   Send_Finished,
+   Receive_Header,
+   Receive_Length,
+   Receive_Content,
+   Receive_Finished
 };
 
 #if USE_WIFI
@@ -37,7 +37,7 @@ enum Transmission_State{
    enum Transmission_State uart_state = No_Transmission;\
    extern CBuffer cb;
 #else
-#define setup_plus_rom_functions() 
+#define setup_plus_rom_functions()
 #endif
 
 #if USE_WIFI
@@ -132,7 +132,7 @@ enum Transmission_State{
 #define process_transmission()
 #endif
 
-void exit_cartridge(uint16_t , uint16_t );
+void exit_cartridge(uint16_t, uint16_t);
 
 /* 'Standard' Bankswitching */
 void __time_critical_func(emulate_standard_cartridge)(int, bool, uint16_t, uint16_t, int);

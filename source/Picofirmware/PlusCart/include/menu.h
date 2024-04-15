@@ -43,7 +43,7 @@
 #define MENU_TEXT_SPACING_SPARSE            "  Sparse"
 
 #define MENU_TEXT_PRIVATE_KEY               "Private Key"
-#define MENU_TEXT_FIRMWARE_UPDATE           "** WiFi Firmware Update **" 
+#define MENU_TEXT_FIRMWARE_UPDATE           "** WiFi Firmware Update **"
 #define MENU_TEXT_SD_FIRMWARE_UPDATE        "** SD-Card Firmware Update **"
 #define MENU_TEXT_OFFLINE_ROM_UPDATE        "Download Offline ROMs"
 #define MENU_TEXT_PLUS_CONNECT              "PlusStore Connect"
@@ -173,6 +173,4 @@ void make_menu_entry(MENU_ENTRY **dst, const char *name, int type, int* num_menu
 void make_keyboardFromLine(MENU_ENTRY **dst, char *line, int* num_menu_entries);
 void make_keyboard(MENU_ENTRY **dst, enum keyboardType selector, int* num_menu_entries, char *input_field = NULL);
 
-
 #endif
-

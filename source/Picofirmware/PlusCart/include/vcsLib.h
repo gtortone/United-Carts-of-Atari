@@ -21,7 +21,6 @@ extern "C" {
 
 #define FF_MULTI_CART	1 // Indicates elf is loaded by multicart and should allow exiting (return from main() function)
 
-
 // Defines for VCS/2600 memory mapped registers
 #define  VSYNC 0x00
 #define  VBLANK 0x01
@@ -72,12 +71,10 @@ extern "C" {
 
 #define CXP0FB 0x02
 
-
 #define INPT4 0x000c
 #ifndef SWCHA
-   #define SWCHA 0x0280
+#define SWCHA 0x0280
 #endif
-
 
 // For firmware use only
 extern const uint8_t Ntsc2600[256];

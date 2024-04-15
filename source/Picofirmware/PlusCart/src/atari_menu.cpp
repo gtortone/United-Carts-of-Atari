@@ -15,13 +15,14 @@ MENU_ENTRY* generateSetupMenu(MENU_ENTRY *dst, int* num_menu_entries) {
    make_menu_entry(&dst, MENU_TEXT_DISPLAY, Setup_Menu, num_menu_entries);
    make_menu_entry(&dst, MENU_TEXT_SYSTEM_INFO, Sub_Menu, num_menu_entries);
 
-   if (flash_has_downloaded_roms())
+   if(flash_has_downloaded_roms())
       make_menu_entry(&dst, MENU_TEXT_DELETE_OFFLINE_ROMS, Menu_Action, num_menu_entries);
    else
       make_menu_entry(&dst, MENU_TEXT_DETECT_OFFLINE_ROMS, Menu_Action, num_menu_entries);
 
    make_menu_entry(&dst, MENU_TEXT_FORMAT_EEPROM, Menu_Action, num_menu_entries);
-   if (EXIT_SWCHB_ADDR == SWCHB)
+
+   if(EXIT_SWCHB_ADDR == SWCHB)
       make_menu_entry(&dst, MENU_TEXT_DISABLE_EMU_EXIT, Menu_Action, num_menu_entries);
    else
       make_menu_entry(&dst, MENU_TEXT_ENABLE_EMU_EXIT, Menu_Action, num_menu_entries);
@@ -49,8 +50,8 @@ MENU_ENTRY* generateSystemInfo(MENU_ENTRY *dst, int* num_menu_entries, char *inp
    sprintf(input_field, "WiFi Firmware      %s", esp8266_at_version);
    make_menu_entry(&dst, input_field, Leave_Menu, num_menu_entries);
    make_menu_entry(&dst, "WiFi MAC address", Leave_Menu, num_menu_entries);
-   sprintf(input_field, "        %X:%X:%X:%X:%X:%X", 
-         mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
+   sprintf(input_field, "        %X:%X:%X:%X:%X:%X",
+           mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
    make_menu_entry(&dst, input_field, Leave_Menu, num_menu_entries);
 #endif
 
@@ -71,9 +72,9 @@ MENU_ENTRY* generateSystemInfo(MENU_ENTRY *dst, int* num_menu_entries, char *inp
 
 #if USE_SD_CARD
    int* sd_stat = sd_card_statistics();
-   sprintf(input_field, "SD-Card Size       %d MiB", sd_stat[sd_card_total_size] );
+   sprintf(input_field, "SD-Card Size       %d MiB", sd_stat[sd_card_total_size]);
    make_menu_entry(&dst, input_field, Leave_Menu, num_menu_entries);
-   sprintf(input_field, "SD-Card Used       %d MiB", sd_stat[sd_card_used_size] );
+   sprintf(input_field, "SD-Card Used       %d MiB", sd_stat[sd_card_used_size]);
    make_menu_entry(&dst, input_field, Leave_Menu, num_menu_entries);
 #endif
 

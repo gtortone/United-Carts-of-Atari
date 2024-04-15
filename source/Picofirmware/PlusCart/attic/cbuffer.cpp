@@ -32,17 +32,19 @@ uint8_t cbuffer_write(CBuffer *cb, char ch) {
 
    cb->data[cb->wrp] = ch;
    cb->wrp = (cb->wrp + 1) % cb->size;
-   if (cb->wrp == cb->rdp) {
+
+   if(cb->wrp == cb->rdp) {
       cb->rdp = (cb->rdp + 1) % cb->size; // full, overwrite
       retval = BUFFER_FULL;
       (cb->full)++;
    }
+
    return (retval);
 }
 
 uint8_t cbuffer_read(CBuffer *cb, char *ch) {
 
-   if (cbuffer_isempty(cb))
+   if(cbuffer_isempty(cb))
       return BUFFER_EMPTY;
 
    (*ch) = cb->data[cb->rdp];
@@ -55,4 +57,3 @@ char *cbuffer_dumpdata(CBuffer *cb) {
 
    return (cb->data);
 }
-
