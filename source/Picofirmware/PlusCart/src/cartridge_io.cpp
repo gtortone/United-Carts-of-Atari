@@ -17,6 +17,8 @@
 #elif HARDWARE_TYPE == PICOCART
 */
 #include "hardware/structs/sio.h"
+   const uint32_t addr_gpio_mask = ADDR_GPIO_MASK | A12_GPIO_MASK;
+   const uint32_t data_gpio_mask = DATA_GPIO_MASK;
    volatile uint16_t* const ADDR_IDR = (uint16_t*)(&sio_hw->gpio_in);
    volatile uint8_t* const DATA_IDR = (uint8_t*)(&sio_hw->gpio_in);
    volatile uint8_t* const DATA_ODR = (uint8_t*)(&sio_hw->gpio_out);
