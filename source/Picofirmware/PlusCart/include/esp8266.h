@@ -33,6 +33,10 @@
 extern char esp8266_at_version[];
 extern char http_request_header[];
 
+// wifi AP returned by scanNetworks
+#define MAX_AP_NUM      16
+extern WiFiApData waplist[];
+
 typedef struct {
    uint32_t start;
    uint32_t stop;

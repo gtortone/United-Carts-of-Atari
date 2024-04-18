@@ -24,7 +24,7 @@
 // buffers
 #define BUFFER_SIZE     96
 #define BUFFER_SIZE_KB  96
-#define ERAM_SIZE_KB    64    // extra RAM
+#define ERAM_SIZE_KB    32    // extra RAM
 
 extern char http_request_header[];
 extern uint8_t buffer[];

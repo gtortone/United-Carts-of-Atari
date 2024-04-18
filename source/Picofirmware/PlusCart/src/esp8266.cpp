@@ -35,6 +35,7 @@ WiFiClient client;
 
 char tmp_uart_buffer[50];
 char esp8266_at_version[15];
+WiFiApData waplist[MAX_AP_NUM];
 
 extern queue_t pqueue;
 
@@ -390,7 +391,7 @@ bool esp8266_reset(bool factory_reset) {
 
 bool esp8266_wifi_list(MENU_ENTRY **dst, int *num_menu_entries) {
 
-   int numSsid = WiFi.scanNetworks();
+   int numSsid = WiFi.scanNetworks(waplist, MAX_AP_NUM);
 
    for(int thisNet = 0; thisNet < numSsid; thisNet++) {
 

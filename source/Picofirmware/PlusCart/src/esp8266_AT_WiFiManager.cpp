@@ -266,24 +266,22 @@ void uri_decode(char *s) {
 
 void generate_html_wifi_list(void) {
 
-   int numSsid = WiFi.scanNetworks();
+   int numSsid = WiFi.scanNetworks(waplist, MAX_AP_NUM);
 
    buffer[0] = '\0';
 
    for(int thisNet = 0; thisNet < numSsid; thisNet++) {
       const char *name = WiFi.SSID(thisNet);
-      wl_enc_type enc = (wl_enc_type) WiFi.encryptionType(thisNet);
+      uint8_t enc = WiFi.encryptionType(thisNet);
       int32_t quality = WiFi.RSSI(thisNet);
 
       strcat((char *)buffer, "<div><a href=\"#p\" onclick=\"c(this)\">");
       strcat((char *)buffer, name);
       strcat((char *)buffer, "</a>&nbsp;<span class=\"q ");
 
-      if(enc != ENC_TYPE_NONE)
+      if(enc != 0)
          strcat((char *)buffer, (const char *)"l");
 
-      //else
-      //   strcat((char *)buffer, (const char *)" ");
       strcat((char *)buffer, "\">");
 
       if(quality <= -100) {
