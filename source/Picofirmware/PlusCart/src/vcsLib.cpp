@@ -559,9 +559,8 @@ void __time_critical_func(vcsPla4Ex)(uint8_t data) {
       ;
 
    // d7,d6 are not driven by cart, because they're driven by TIA
-   //FIXME
-   //*DATA_ODR = data;
-   //SET_DATA_MODE(0x0555)
+   DATA_OUT(data);
+   SET_DATA_MODE(0x3F);
 }
 
 void __time_critical_func(vcsPlp4Ex)(uint8_t data) {
@@ -571,9 +570,8 @@ void __time_critical_func(vcsPlp4Ex)(uint8_t data) {
       ;
 
    // d7,d6 are not driven by cart, because they're driven by TIA
-   //FIXME
-   //*DATA_ODR = data;
-   //SET_DATA_MODE(0x0555)
+   DATA_OUT(data);
+   SET_DATA_MODE(0x3F);
 }
 
 void __time_critical_func(vcsWaitForAddress)(uint16_t address) {

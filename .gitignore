@@ -12,3 +12,6 @@
 /source/Picofirmware/jeff-pico
 /source/Picofirmware/PlusCart/.pio
 /source/Picofirmware/PlusCart/data
+/source/STM32firmware/
+/source/ElfTests
+/pcbs

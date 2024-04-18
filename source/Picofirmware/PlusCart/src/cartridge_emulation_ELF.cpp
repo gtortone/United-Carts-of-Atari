@@ -12,6 +12,8 @@
 #define NTSC_CLOCK 1193182UL
 #define PAL_CLOCK 1182298UL
 
+#define ELF_RAM_KB      16
+
 NameAddressMapEntry NameAddressMap[] = {
    // Color lookup table is updated based on detected system. Keep at index 0
    {(uint32_t)&Ntsc2600[0], (char *)"ColorLookup" },
@@ -96,11 +98,9 @@ int __time_critical_func(launch_elf_file)(const char* filename, uint32_t buffer_
    uint32_t metaCount = ((ElfHeader*)buffer)->e_shnum;
    SectionMetaEntry* meta = (SectionMetaEntry *) malloc(sizeof(SectionMetaEntry) * metaCount);
 
-   // FIXME
    // pointer to extra ram buffer
    uint8_t *eram;
-
-   eram = (uint8_t *) malloc((ERAM_SIZE_KB / 2) * 1024); 
+   eram = (uint8_t *) malloc(ELF_RAM_KB * 1024); 
 
    if(eram == NULL)
       return 0;
