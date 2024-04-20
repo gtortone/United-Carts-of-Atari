@@ -15,11 +15,11 @@
 #define LINE_SPACING_EEPROM_ADDR 0x02
 #define FREE_SECTOR_EEPROM_ADDR  0x03
 
-extern uint32_t _FS_start[], _FS_end[];
+extern uint8_t _FS_start[], _FS_end[];
 #define FLASH_FS_SIZE   (_FS_end - _FS_start)
 #define EEPROM_SIZE  4096
 
-#define FLASH_AREA_SIZE          512 * 1024     // 512 KB
+#define FLASH_AREA_SIZE          1024 * 1024     // 1 MB
 #define FLASH_AREA_OFFSET        PICO_FLASH_SIZE_BYTES - (FLASH_AREA_SIZE + FLASH_FS_SIZE + EEPROM_SIZE)
 
 /*
@@ -28,6 +28,7 @@ uint32_t flash_check_offline_roms_size(void);
 */
 
 uint32_t flash_download(char *, uint32_t, uint32_t, enum loadMedia);
+void flash_buffer_at(uint8_t *, uint32_t, uint32_t);
 void flash_download_at(char *, uint32_t, uint32_t, uint32_t);
 void flash_cache_at(char *, uint32_t, uint32_t, uint32_t);
 void flash_copy(char *, uint32_t, uint32_t, uint32_t);

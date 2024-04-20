@@ -50,7 +50,38 @@ void flash_erase_storage(void) {
 
 void flash_erase_storage(uint32_t start_addr, uint32_t end_addr) {
 
+   uint32_t irqstatus = save_and_disable_interrupts();
    flash_range_erase(start_addr, (end_addr - start_addr));
+   restore_interrupts(irqstatus);
+}
+
+void flash_buffer_at(uint8_t* buffer, uint32_t buffer_size, uint32_t flash_address) {
+
+   uint16_t parts = buffer_size / FLASH_SECTOR_SIZE;
+   uint16_t remaining_bytes = buffer_size - (parts * FLASH_SECTOR_SIZE);
+   uint32_t end_address = flash_address + (parts * FLASH_SECTOR_SIZE);
+
+   if(remaining_bytes > 0)
+      end_address + FLASH_SECTOR_SIZE;
+
+   dbg("buffer_size: %ld, flash_address: 0x%X\r\n", buffer_size, flash_address);
+   dbg("parts: %d, remaining_bytes: %ld, end_address: 0x%X\r\n", parts, remaining_bytes, end_address);
+
+   flash_erase_storage(flash_address, end_address);
+
+   uint32_t irqstatus = save_and_disable_interrupts();
+
+   int i = 0;
+   while(i++ < parts) {
+      //flash_range_program(flash_address, buffer, (parts * FLASH_SECTOR_SIZE));
+      flash_range_program(flash_address, buffer, FLASH_SECTOR_SIZE);
+      flash_address += FLASH_SECTOR_SIZE;
+   }
+
+   if(remaining_bytes > 0)
+      flash_range_program(flash_address, buffer + (parts * FLASH_SECTOR_SIZE), FLASH_SECTOR_SIZE);
+
+   restore_interrupts(irqstatus);
 }
 
 #if USE_WIFI || USE_SD_CARD
@@ -72,9 +103,7 @@ uint32_t flash_download(char *filename, uint32_t download_size, uint32_t http_ra
 
    uint32_t address = FLASH_AREA_OFFSET + (start_sector * 4096);
 
-   uint32_t irqstatus = save_and_disable_interrupts();
    flash_erase_storage(start_address, end_address);
-   restore_interrupts(irqstatus);
 
    if(media == loadMedia::WIFI) {
 #if USE_WIFI
@@ -201,106 +230,6 @@ void flash_download_at(char *filename, uint32_t download_size, uint32_t http_ran
    }
 
    plusstore.stop();
-}
-#endif
-
-#if 0
-
-/* write (firmware) to flash from buffer */
-void flash_firmware_update(uint32_t filesize) {
-
-   uint32_t count;
-   uint32_t Address = ADDR_FLASH_SECTOR_0;
-   HAL_StatusTypeDef status;
-
-   //HAL_FLASHEx_Erase();
-   // Process Locked
-   // __HAL_LOCK(&pFlash);
-   pFlash.Lock = HAL_LOCKED;
-
-   // Wait for last operation to be completed
-   if(FLASH_WaitInRAMForLastOperationWithMaxDelay() == HAL_OK) {
-      uint32_t sectors[4] = { FLASH_SECTOR_0, FLASH_SECTOR_2, FLASH_SECTOR_3, FLASH_SECTOR_4 };
-
-      for(count = 0 ; count < 4; count++) {
-         //          FLASH_Erase_Sector(count, (uint8_t) FLASH_VOLTAGE_RANGE_3);
-         CLEAR_BIT(FLASH->CR, FLASH_CR_PSIZE);
-         FLASH->CR |= FLASH_PSIZE_WORD;
-         CLEAR_BIT(FLASH->CR, FLASH_CR_SNB);
-         FLASH->CR |= FLASH_CR_SER | (sectors[count] << FLASH_CR_SNB_Pos);
-         FLASH->CR |= FLASH_CR_STRT;
-
-         /* Wait for last operation to be completed */
-         status = FLASH_WaitInRAMForLastOperationWithMaxDelay();
-
-         /* If the erase operation is completed, disable the SER and SNB Bits */
-         CLEAR_BIT(FLASH->CR, (FLASH_CR_SER | FLASH_CR_SNB));
-
-         if(status != HAL_OK) {
-            /* In case of error, stop erase procedure and return the faulty sector*/
-            // break; Todo wat nu
-         }
-      }
-   } else {
-      return; // or try flashing anyway ??
-   }
-
-   /* Process Unlocked */
-   __HAL_UNLOCK(&pFlash);
-   //end HAL_FLASHEx_Erase();
-
-   /* Flush the caches to be sure of the data consistency */
-   __HAL_FLASH_DATA_CACHE_DISABLE();
-   __HAL_FLASH_INSTRUCTION_CACHE_DISABLE();
-
-   __HAL_FLASH_DATA_CACHE_RESET();
-   __HAL_FLASH_INSTRUCTION_CACHE_RESET();
-
-   __HAL_FLASH_INSTRUCTION_CACHE_ENABLE();
-   __HAL_FLASH_DATA_CACHE_ENABLE();
-
-   //__HAL_LOCK(&pFlash);
-
-   pFlash.Lock = HAL_LOCKED;
-   FLASH_WaitInRAMForLastOperationWithMaxDelay();
-
-   uint8_t* data_pointer = buffer;
-   count = 0;
-
-   while(count < filesize) {
-      //HAL_FLASH_Program();
-      /* Program the user Flash area byte by byte
-       (area defined by FLASH_USER_START_ADDR and FLASH_USER_END_ADDR) ***********/
-      /* Wait for last operation to be completed */
-      FLASH_WaitInRAMForLastOperationWithMaxDelay() ;
-      /*Program byte (8-bit) at a specified address.*/
-      // FLASH_Program_Byte(Address, (uint8_t) c);
-      CLEAR_BIT(FLASH->CR, FLASH_CR_PSIZE);
-      FLASH->CR |= FLASH_PSIZE_BYTE;
-      FLASH->CR |= FLASH_CR_PG;
-
-      *(uint8_t*)Address = data_pointer[count];
-      // end FLASH_Program_Byte(Address, (uint8_t) c);
-
-      /* Wait for last operation to be completed */
-      FLASH_WaitInRAMForLastOperationWithMaxDelay();
-
-      /* If the program operation is completed, disable the PG Bit */
-      FLASH->CR &= (~FLASH_CR_PG);
-      Address++;
-      count++;
-
-      if(Address == ADDR_FLASH_SECTOR_1) {
-         Address = ADDR_FLASH_SECTOR_2; // Skip user settings area
-      } else if(Address == (ADDR_FLASH_SECTOR_4 + 48 * 1024)) {
-         data_pointer = ((uint8_t*)0x10000000) - 96 * 1024 ;
-      }
-   }
-
-   __HAL_UNLOCK(&pFlash);
-
-   __enable_irq();
-   NVIC_SystemReset();
 }
 #endif
 
