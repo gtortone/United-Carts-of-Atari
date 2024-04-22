@@ -27,12 +27,12 @@ extern const uint32_t addr_gpio_mask;
 extern const uint32_t data_gpio_mask;
 
 #define ADDR_IN (sio_hw->gpio_in & addr_gpio_mask) >> PINROMADDR
-#define DATA_OUT(v) sio_hw->gpio_togl = (sio_hw->gpio_out ^ (v << PINROMDATA))
+#define DATA_OUT(v) sio_hw->gpio_togl = (sio_hw->gpio_out ^ (v << PINROMDATA)) & data_gpio_mask
 #define DATA_IN ((sio_hw->gpio_in & data_gpio_mask) >> PINROMDATA)
 #define DATA_IN_BYTE DATA_IN
 
 #define SET_DATA_MODE_IN    sio_hw->gpio_oe_clr = data_gpio_mask;
 #define SET_DATA_MODE_OUT   sio_hw->gpio_oe_set = data_gpio_mask;
-#define SET_DATA_MODE(m)    sio_hw->gpio_oe_togl = (sio_hw->gpio_oe ^ (m << PINROMDATA));
+#define SET_DATA_MODE(m)    sio_hw->gpio_oe_togl = (sio_hw->gpio_oe ^ (m << PINROMDATA)) & data_gpio_mask
 
 #endif // CARTRIDGE_IO_H
