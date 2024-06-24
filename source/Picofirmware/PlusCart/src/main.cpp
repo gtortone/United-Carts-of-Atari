@@ -781,11 +781,9 @@ CART_TYPE identify_cartridge(MENU_ENTRY *d) {
    if(isElf(bytes_read, buffer)) {
       cart_type.base_type = base_type_ELF;
    }
-   /*
    else if(is_ace_cartridge(bytes_read, buffer)){
    	cart_type.base_type = base_type_ACE;
    }
-   */
    else if(d->filesize <= 64 * 1024 && (d->filesize % 1024) == 0 && isProbably3EPlus(d->filesize, buffer)) {
       cart_type.base_type = base_type_3EPlus;
    } else if(d->filesize == 2*1024) {
@@ -1046,16 +1044,16 @@ void emulate_cartridge(CART_TYPE cart_type, MENU_ENTRY *d) {
 
    else if(cart_type.base_type == base_type_SB)
       emulate_SB_cartridge(curPath, cart_size_bytes, buffer, d);
-   /*
+
    else if(cart_type.base_type == base_type_ACE) {
       uint8_t *eram;
       eram = (uint8_t *) malloc(ERAM_SIZE_KB * 1024);
-      launch_ace_cartridge(curPath, cart_size_bytes, buffer, d, offset, cart_type.withPlusFunctions, eram); 
+      launch_ace_cartridge(curPath, cart_size_bytes, buffer, d, cart_type.withPlusFunctions, eram); 
       free(eram);
-
-   } */ else if(cart_type.base_type == base_type_ELF) {
-      launch_elf_file(curPath, cart_size_bytes, buffer);
    }
+
+   else if(cart_type.base_type == base_type_ELF)
+      launch_elf_file(curPath, cart_size_bytes, buffer);
 
    uint8_t flag;
 #if USE_WIFI
@@ -1292,11 +1290,10 @@ void loop() {
                CART_TYPE cart_type = identify_cartridge(d);
                sleep_ms(200);
 
-               /*
                if (cart_type.base_type == base_type_ACE && !(is_ace_cartridge(d->filesize, buffer)))
                	menuStatusMessage = romtype_ACE_unsupported;
 
-               else */ if(cart_type.base_type == base_type_Load_Failed)
+               else if(cart_type.base_type == base_type_Load_Failed)
                   menuStatusMessage = rom_download_failed;
 
                else if(cart_type.base_type != base_type_None) {
@@ -1304,12 +1301,6 @@ void loop() {
                   emulate_cartridge(cart_type, d);
                   set_menu_status_byte(STATUS_StatusByteReboot, 0);
                   menuStatusMessage = exit_emulation;
-
-                  /*
-                  if(cart_type.uses_systick){
-                  	SysTick_Config(SystemCoreClock / 1000U);	// 1KHz
-                  }
-                  */
                }
 
                else

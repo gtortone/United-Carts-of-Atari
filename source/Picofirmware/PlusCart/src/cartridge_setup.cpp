@@ -17,13 +17,13 @@
 #include "cartridge_setup.h"
 
 #define RAM_BANKS (BUFFER_SIZE_KB / 4)             //    24    
-#define ERAM_BANKS (ERAM_SIZE_KB / 4)              //    16
+#define ERAM_BANKS (ERAM_SIZE_KB / 4)              //     8
 #define FLASH_BANKS (64 - RAM_BANKS - ERAM_BANKS)  //    24
 
 #define ERAM_SIZE (ERAM_SIZE_KB * 1024)
 
-#define ERAM_IMAGE_SIZE (ERAM_BANKS * 4096)        // 65536
-#define ERAM_IMAGE_OFFSET (RAM_BANKS * 4096)       // 98304
+#define ERAM_IMAGE_SIZE (ERAM_BANKS * 4096)
+#define ERAM_IMAGE_OFFSET (RAM_BANKS * 4096)
 
 #define FLASH_IMAGE_SIZE (FLASH_BANKS * 4096)      // must be < FLASH_AREA_SIZE
 #define FLASH_IMAGE_OFFSET ((RAM_BANKS + ERAM_BANKS) * 4096)
